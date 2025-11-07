@@ -1,6 +1,6 @@
 # Yap Backend
 
-The initial backend uses TypeScript with Express and WebSockets. Tested using jest and ts-jest. Ultra simple: not even any package.json scripts.
+The initial backend uses TypeScript with Express and WebSockets. Tested using jest and ts-jest. No DI, no class-based services, just exported functions. Ultra simple: not even any package.json scripts.
 
 ## Quick Start
 

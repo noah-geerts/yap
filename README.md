@@ -26,3 +26,60 @@ The main objective of this project is to test my understanding of WebSockets, En
 ## Backend
 
 [See docs here](https://github.com/noah-geerts/yap/backend/README.md)
+
+## Description
+
+- You can join any of the rooms in a dropdown
+- When you join that room, a duplex connection with the server is initiated
+- You can push messages to the server, and the server can push new messages to you for that room
+- Rooms are handled manually by the server since the basic WebSocket protocol only allows you to open a bi-directional communication channel with the server as a whole, and does not specify subchannels or namespaces
+
+## API Specification
+
+## REST API
+
+### `Message` Type
+
+```typescript
+class Message {
+  room: string;
+  from: string;
+  timestamp_utc: number;
+  text: string;
+}
+```
+
+### `GET /messages/:room`
+
+**Description:**  
+Retrieve all messages for the specified room.
+
+**Request:**
+
+- **Method:** `GET`
+- **Path Parameter:** `room` — the name of the room
+- **Body / Query Params:** none
+
+**Responses:**
+
+- ✅ **200 OK** — returns all messages for the given room
+- ❌ **404 Not Found** — if the room does not exist
+
+**Return type:**
+`Message[]`
+
+---
+
+## WebSocket
+
+All WebSocket messages use the **text opcode (`0x2`)** and contain **stringified JSON data**, which should be parsed on the receiving end.
+
+### Server → Client Messages
+
+All messages from the **server to client** have the `Message` type, indicating that the server is pushing a new message to the client for a room the client is connected to.
+
+---
+
+### Client → Server Messages
+
+All messages from the **client to server** have the `Message` type, indicating that the client is sending a new message for the given room.
