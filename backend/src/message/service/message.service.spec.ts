@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MessageService } from './message.service';
-import { DynamodbModule } from '../dynamodb/dynamodb.module';
+import { DynamoDBModule } from '../../dynamoDB/dynamoDB.module';
 import { getChatId } from './message.service';
 
 describe('MessageService', () => {
@@ -9,7 +9,7 @@ describe('MessageService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [MessageService],
-      imports: [DynamodbModule],
+      imports: [DynamoDBModule],
     }).compile();
 
     service = module.get<MessageService>(MessageService);

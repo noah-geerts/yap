@@ -14,7 +14,7 @@ import { marshall } from '@aws-sdk/util-dynamodb';
 // Src
 import { AppModule } from '../src/app.module';
 import Message from '../src/domain/Message';
-import { getChatId } from '../src/message/message.service';
+import { getChatId } from '../src/message/service/message.service';
 
 // Testing helpers
 import { getToken } from './e2e-helper';

@@ -12,7 +12,7 @@ import { io } from 'socket.io-client';
 // Src
 import { AppModule } from '../src/app.module';
 import Message from '../src/domain/Message';
-import { MessageService } from '../src/message/message.service';
+import { MessageService } from '../src/message/service/message.service';
 import SendMessageDto from 'src/domain/SendMessageDto';
 import MessageStatusDto from 'src/domain/MessageStatusDto';
 import NewMessageDto from 'src/domain/NewMessageDto';
@@ -179,7 +179,7 @@ describe('MessageGateway (e2e)', () => {
         reject('Socket disconnected unexpectedly');
       });
 
-      socket.on('connection_error', (reason) => {
+      socket.on('connect_error', (reason) => {
         reject('Unexpected connection error occured');
       });
 

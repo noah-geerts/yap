@@ -2,8 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { passportJwtSecret } from 'jwks-rsa';
-import Auth0Payload from './jwt-payload';
+import Auth0Payload from '../domain/Auth0Payload';
 
+// Defines how Passport will authenticate requests (with Jwt in this case)
+// This will be used in Nestjs controllers via Passport's AuthGuard, which uses this jwt strategy
+// to authenticate requests, and then attaches the jwt payload to the request object,
+// which can be accessed via the User decorator
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {

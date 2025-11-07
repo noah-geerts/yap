@@ -9,13 +9,13 @@ import {
   OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { AuthService } from '../auth/auth.service';
-import SendMessageDto from '../domain/SendMessageDto';
+import { AuthService } from '../../auth/auth.service';
+import SendMessageDto from '../../domain/SendMessageDto';
 import { SendMessageExceptionFilter } from './send-message-exception.filter';
-import { MessageService } from './message.service';
-import MessageStatusDto from '../domain/MessageStatusDto';
-import Auth0Payload from '../auth/jwt-payload';
-import NewMessageDto from '../domain/NewMessageDto';
+import { MessageService } from '../service/message.service';
+import MessageStatusDto from '../../domain/MessageStatusDto';
+import Auth0Payload from '../../domain/Auth0Payload';
+import NewMessageDto from '../../domain/NewMessageDto';
 
 @WebSocketGateway({ cors: true })
 export class MessageGateway implements OnGatewayInit {

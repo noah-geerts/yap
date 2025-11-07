@@ -1,17 +1,15 @@
 import {
   BadRequestException,
   Controller,
-  DefaultValuePipe,
   Get,
   Param,
-  ParseIntPipe,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { MessageService } from './message.service';
+import { MessageService } from '../service/message.service';
 import { AuthGuard } from '@nestjs/passport';
-import { User } from '../auth/user.decorator';
-import Auth0Payload from '../auth/jwt-payload';
+import { User } from '../../auth/user.decorator';
+import Auth0Payload from '../../domain/Auth0Payload';
 
 @Controller('messages')
 @UseGuards(AuthGuard('jwt')) // use my authentication setup from AuthModule

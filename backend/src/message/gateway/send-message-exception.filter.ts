@@ -1,8 +1,8 @@
 import { ExceptionFilter, Catch, ArgumentsHost, Logger } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
-import MessageStatusDto from '../domain/MessageStatusDto';
-import SendMessageDto from '../domain/SendMessageDto';
+import MessageStatusDto from '../../domain/MessageStatusDto';
+import SendMessageDto from '../../domain/SendMessageDto';
 
 @Catch()
 export class SendMessageExceptionFilter implements ExceptionFilter {

@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
-import { MessageService } from './message.service';
-import { MessageController } from './message.controller';
-import { DynamodbModule } from '../dynamodb/dynamodb.module';
+import { MessageService } from './service/message.service';
+import { MessageController } from './controller/message.controller';
+import { DynamoDBModule } from '../dynamoDB/dynamoDB.module';
 import { AuthModule } from '../auth/auth.module';
-import { MessageGateway } from './message.gateway';
+import { MessageGateway } from './gateway/message.gateway';
 
 @Module({
   providers: [MessageService, MessageGateway],
   controllers: [MessageController],
-  imports: [DynamodbModule, AuthModule],
+  imports: [DynamoDBModule, AuthModule],
 })
 export class MessageModule {}

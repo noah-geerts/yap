@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import Auth0Payload from './jwt-payload';
+import Auth0Payload from '../domain/Auth0Payload';
 
+// Custom Authentication service that uses the jose library to retrieve the key set from our
+// authentication provider (Auth0) and verify jwt's using this key set
 @Injectable()
 export class AuthService {
   JWKS: any;

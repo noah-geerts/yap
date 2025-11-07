@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MessageController } from './message.controller';
-import { MessageService } from './message.service';
-import { DynamodbModule } from '../dynamodb/dynamodb.module';
+import { MessageService } from '../service/message.service';
+import { DynamoDBModule } from '../../dynamoDB/dynamoDB.module';
 
 describe('MessageController', () => {
   let controller: MessageController;
@@ -9,7 +9,7 @@ describe('MessageController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MessageController],
-      imports: [DynamodbModule],
+      imports: [DynamoDBModule],
       providers: [MessageService],
     }).compile();
 
