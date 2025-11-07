@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", // modern JS output
+    "module": "ESNext", // emit ESM import/export
+    "moduleResolution": "node", // resolves imports like Node
+    "outDir": "dist", // compiled JS output folder
+    "rootDir": "src", // your TS source folder
+    "esModuleInterop": true, // allows default imports from CJS
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

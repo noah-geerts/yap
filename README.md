@@ -18,3 +18,11 @@ The main objective of this project is to test my understanding of WebSockets, En
 | Version | Description                                                                       | Git Tag                                                   |
 | ------- | --------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | v1.0    | Basic real-time room-based chat without persistence using native WebSockets only. | [View v1.0](https://github.com/noah-geerts/yap/tree/v1.0) |
+
+## Frontend
+
+[See docs here](https://github.com/noah-geerts/yap/frontend/README.md)
+
+## Backend
+
+[See docs here](https://github.com/noah-geerts/yap/backend/README.md)
