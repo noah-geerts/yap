@@ -27,11 +27,11 @@ export class SendMessageExceptionFilter implements ExceptionFilter {
             errorMessage: exception?.message ?? 'Internal server error',
           };
 
-    this.logger.error(
-      'sendMessage websocket event exception:',
-      payload,
-      exception?.stack,
-    );
+    // this.logger.error(
+    //   'sendMessage websocket event exception:',
+    //   payload,
+    //   exception?.stack,
+    // );
     try {
       if (client && client.emit) {
         // emit a stable event the frontend can listen for

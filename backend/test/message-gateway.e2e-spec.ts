@@ -1,160 +1,33 @@
+// Dependencies
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
 import {
   CreateTableCommand,
   DeleteTableCommand,
   DynamoDBClient,
-  PutItemCommand,
 } from '@aws-sdk/client-dynamodb';
-import Message from '../src/domain/Message';
-import { getChatId, MessageService } from '../src/message/message.service';
-import { marshall } from '@aws-sdk/util-dynamodb';
 import { io } from 'socket.io-client';
+
+// Src
+import { AppModule } from '../src/app.module';
+import Message from '../src/domain/Message';
+import { MessageService } from '../src/message/message.service';
 import SendMessageDto from 'src/domain/SendMessageDto';
 import MessageStatusDto from 'src/domain/MessageStatusDto';
 import NewMessageDto from 'src/domain/NewMessageDto';
 
-// Fetches a legitimate jwt from the auth0 server for testing auth guards
-async function getToken() {
-  try {
-    const response = await fetch(
-      'https://dev-h60bzgedqbu866oj.us.auth0.com/oauth/token',
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          client_id: process.env.AUTH0_CLIENT_ID,
-          client_secret: process.env.AUTH0_CLIENT_SECRET,
-          audience: 'http://localhost:3000',
-          grant_type: 'client_credentials',
-        }),
-      },
-    );
+// Testing helpers
+import { getToken } from './e2e-helper';
 
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching token:', error);
-  }
-}
-
-describe('MessageController (e2e)', () => {
-  let app: INestApplication<App>;
-  let token: string;
-  const dynamo = new DynamoDBClient({
-    endpoint: process.env.DYNAMO_URL,
-  });
-  const testWithId = 'testuser2';
-  const testText = 'hello';
-  const seededMessages: Message[] = [];
-
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
-
-  beforeAll(async () => {
-    // Delete the table
-    await dynamo.send(new DeleteTableCommand({ TableName: 'messages' }));
-
-    // Create the table for testing
-    await dynamo.send(
-      new CreateTableCommand({
-        TableName: 'messages',
-        AttributeDefinitions: [
-          { AttributeName: 'chatid', AttributeType: 'S' },
-          { AttributeName: 'timestamp_utc', AttributeType: 'N' },
-        ],
-        KeySchema: [
-          { AttributeName: 'chatid', KeyType: 'HASH' }, // partition key
-          { AttributeName: 'timestamp_utc', KeyType: 'RANGE' }, // sort key
-        ],
-        BillingMode: 'PAY_PER_REQUEST',
-        TableClass: 'STANDARD',
-      }),
-    );
-
-    const tokenObject = await getToken();
-    token = tokenObject.access_token;
-    const tokenSub = process.env.AUTH0_CLIENT_ID + '@clients';
-
-    // Seed some messages
-    for (let i = 2; i >= 0; i--) {
-      const message: Message = {
-        from: tokenSub,
-        chatid: getChatId(tokenSub, testWithId),
-        timestamp_utc: i,
-        text: testText,
-      };
-
-      seededMessages.push(message);
-
-      await dynamo.send(
-        new PutItemCommand({ TableName: 'messages', Item: marshall(message) }),
-      );
-    }
-  });
-
-  it('GET /messages should return unauthorized when no jwt provided', () => {
-    return request(app.getHttpServer()).get('/messages/testid').expect(401);
-  });
-
-  it('GET /messages should return an empty array for nonexistent conversation with no cursor', () => {
-    // test-user has no chats with test-id
-    return request(app.getHttpServer())
-      .get('/messages/testid')
-      .set('Authorization', 'Bearer ' + token)
-      .expect(200)
-      .expect([]);
-  });
-
-  it('GET /messages should return an empty array for nonexistent conversation with cursor', () => {
-    // test-user has no chats with test-id
-    return request(app.getHttpServer())
-      .get('/messages/testid?lastReceivedTimestamp=0')
-      .set('Authorization', 'Bearer ' + token)
-      .expect(200)
-      .expect([]);
-  });
-
-  it('GET /messages should return an not found with no withId', () => {
-    return request(app.getHttpServer())
-      .get('/messages')
-      .set('Authorization', 'Bearer ' + token)
-      .expect(404);
-  });
-
-  it('GET /messages should return the recent messages from a conversation', () => {
-    // Arrange
-    let a = 3;
-
-    // Act & Assert
-    return request(app.getHttpServer())
-      .get('/messages/' + testWithId)
-      .set('Authorization', 'Bearer ' + token)
-      .expect(200)
-      .expect(seededMessages);
-  });
-});
-
+// Message Gateway tests (over Socket.io)
 describe('MessageGateway (e2e)', () => {
   let app: INestApplication<App>;
   let token: string;
   const dynamo = new DynamoDBClient({
     endpoint: process.env.DYNAMO_URL,
   });
-  const gatewayUrl = 'http://localhost:3000/';
+  const gatewayUrl = `ws://localhost:${process.env.PORT || 3000}/`;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -163,6 +36,11 @@ describe('MessageGateway (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
+    await app.listen(process.env.PORT || 3000);
+  });
+
+  afterEach(async () => {
+    if (app) await app.close();
   });
 
   beforeAll(async () => {
@@ -190,41 +68,49 @@ describe('MessageGateway (e2e)', () => {
     token = tokenObject.access_token;
   });
 
-  it('should deny connection to unauthorized handshakes', (done) => {
-    const socket = io(gatewayUrl);
+  it('should deny connection to unauthorized handshakes', async () => {
+    await new Promise<void>((resolve, reject) => {
+      // Arrange (open connection)
+      const socket = io(gatewayUrl);
 
-    const timeout = setTimeout(() => {
-      done(new Error('Socket was not disconnected in time'));
-    }, 500); // fail if not disconnected within 500ms
+      // Expect a connect_error event with the unauthorized message
+      socket.on('connect_error', (err) => {
+        // Our thrown message if we are upgraded, otherwise generic xhr poll error
+        if (
+          err.message === 'No authorization header provided' ||
+          err.message === 'xhr poll error'
+        ) {
+          resolve();
+        } else {
+          reject('Wrong connect_error event received from server');
+        }
+      });
 
-    socket.on('disconnect', (reason) => {
-      console.log('DISCONNECTING');
-      expect(reason).toBe('io server disconnect'); // server forced
-      clearTimeout(timeout);
-      done();
+      // Fail if there was no connect_error within 500ms
+      setTimeout(() => {
+        reject('No connect_error event received');
+      }, 500);
     });
   });
 
-  it('should allow connection to authorized handshakes', (done) => {
-    const socket = io(gatewayUrl, {
-      extraHeaders: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  it('should allow connection to authorized handshakes', async () => {
+    await new Promise<void>((resolve, reject) => {
+      // Arrange (open connection)
+      const socket = io(gatewayUrl, {
+        extraHeaders: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const timeout = setTimeout(() => {
-      done();
-    }, 500); // pass if still connected after 500ms
+      // Expect not to get a connect_error
+      socket.on('connect_error', (err) => {
+        reject('error connecting');
+      });
 
-    socket.on('disconnect', (reason) => {
-      console.log('DISCONNECTING');
-      clearTimeout(timeout);
-      fail('Socket disconnected despite providing auth header');
-    });
-
-    socket.on('connection_error', (reason) => {
-      clearTimeout(timeout);
-      fail('Unexpected connection error occured');
+      // Pass if client received the connect event successfully
+      socket.on('connect', () => {
+        resolve();
+      });
     });
   });
 

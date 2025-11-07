@@ -5,8 +5,8 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
-  OnGatewayConnection,
   WsException,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from '../auth/auth.service';
@@ -18,30 +18,45 @@ import Auth0Payload from '../auth/jwt-payload';
 import NewMessageDto from '../domain/NewMessageDto';
 
 @WebSocketGateway({ cors: true })
-export class MessageGateway implements OnGatewayConnection {
+export class MessageGateway implements OnGatewayInit {
+  @WebSocketServer()
+  server: Server;
+
   constructor(
     private readonly authService: AuthService,
     private readonly messageService: MessageService,
   ) {}
 
-  @WebSocketServer()
-  server: Server;
+  // Attach this middleware to the underlying engine.io connection to authenticate
+  // any HTTP requests
+  afterInit(server: Server) {
+    console.log('INIT');
 
-  // Authorization upon new connection. Disconnect if unauthorized
-  async handleConnection(client: Socket) {
-    console.log('client connecting');
-    try {
-      const authHeader = client.handshake.headers.authorization;
-      if (!authHeader) {
-        throw new Error('No authorization header provided. Disconnecting.');
+    server.use((socket: Socket, next) => {
+      try {
+        console.log('client connecting to engine.io');
+
+        // Extract auth headers
+        const authHeader = socket.handshake.headers.authorization;
+        if (!authHeader) {
+          return next(new Error('No authorization header provided'));
+        }
+
+        // Verify token and attach payload to socket
+        const token = authHeader.split(' ')[1];
+        this.authService
+          .verifyToken(token)
+          .then((payload) => {
+            socket.data.user = payload;
+            next();
+          })
+          .catch((err) => {
+            next(new Error('Invalid token'));
+          });
+      } catch (err) {
+        next(err);
       }
-      const jwt = authHeader.split(' ')[1];
-      const payload = await this.authService.verifyToken(jwt);
-      client.data.user = payload;
-    } catch (e) {
-      console.log(e);
-      client.disconnect(true); // unauthorized
-    }
+    });
   }
 
   // Event the client uses to send new messages
