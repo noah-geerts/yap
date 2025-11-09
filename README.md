@@ -21,11 +21,11 @@ The main objective of this project is to test my understanding of WebSockets, En
 
 ## Frontend
 
-[See docs here](https://github.com/noah-geerts/yap/frontend/README.md)
+[See docs here](./frontend/README.md)
 
 ## Backend
 
-[See docs here](https://github.com/noah-geerts/yap/backend/README.md)
+[See docs here](./backend/README.md)
 
 ## Description
 
