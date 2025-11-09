@@ -1,6 +1,6 @@
 import Room from "../domain/Room.js";
 import rooms, { clearDb } from "../persistence/persistence.js";
-import { addRoom, findRoom } from "./room.repository.js";
+import { addRoom, findRoom, getRoomNames } from "./room.repository.js";
 import { describe, beforeEach, it, expect } from "vitest";
 
 /**
@@ -46,6 +46,25 @@ describe("room repository integration tests", () => {
 
       // Assert
       expect(result).toEqual(existingRoom);
+    });
+  });
+
+  describe("getRoomNames", () => {
+    it("should return all room names in the map", () => {
+      // Arrange
+      const room1: Room = { name: "Room1", messages: [] };
+      const room2: Room = { name: "Room2", messages: [] };
+
+      rooms.set("Room1", room1);
+      rooms.set("Room2", room2);
+
+      // Act
+      const result = getRoomNames();
+
+      // Assert
+      expect(result.length).toBe(2);
+      expect(result).toContain("Room1");
+      expect(result).toContain("Room2");
     });
   });
 });

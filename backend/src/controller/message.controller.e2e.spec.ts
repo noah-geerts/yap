@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import rooms, { clearDb } from "../persistence/persistence.js";
 import Room from "../domain/Room.js";
 import Message from "../domain/Message.js";
-import server from "./server.js";
+import server, { bootstrapServer } from "./server.js";
 
 describe("message controller e2e tests", () => {
   let port: number = 9999;
@@ -10,12 +10,7 @@ describe("message controller e2e tests", () => {
 
   beforeEach(() => {
     // Seed some messages
-    const existingRoom: Room = {
-      name: "Room1",
-      messages: [],
-    };
-    rooms.set("Room1", existingRoom);
-
+    const existingRoom = rooms.get("Room1")!;
     for (let i = 0; i < 3; i++) {
       existingRoom.messages.push({
         room: "Room1",
@@ -27,15 +22,20 @@ describe("message controller e2e tests", () => {
   });
 
   afterEach(() => {
-    // Clear the map
+    // Clear the messages
     clearDb();
   });
 
   beforeAll(() => {
-    // This starts both the wsServer and restServer (expressServer)
-    server.listen(port, () => {
-      console.log(`Test server listening on port ${port}`);
-    });
+    // Seed a room
+    const existingRoom: Room = {
+      name: "Room1",
+      messages: [],
+    };
+    rooms.set("Room1", existingRoom);
+
+    // Bootstrap the server
+    bootstrapServer(port);
   });
 
   describe("GET /messages/:room", () => {

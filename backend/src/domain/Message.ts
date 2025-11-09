@@ -5,4 +5,14 @@ type Message = {
   text: string;
 };
 
+export function isMessage(obj: any): obj is Message {
+  return (
+    obj &&
+    typeof obj.room === "string" &&
+    typeof obj.from === "string" &&
+    typeof obj.timestamp_utc === "number" &&
+    typeof obj.text === "string"
+  );
+}
+
 export default Message;

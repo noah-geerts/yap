@@ -12,3 +12,8 @@ export function addRoom(roomName: string): void {
   const newRoom: Room = { name: roomName, messages: [] };
   rooms.set(roomName, newRoom);
 }
+
+// Get all room names
+export function getRoomNames(): string[] {
+  return [...rooms.keys()];
+}

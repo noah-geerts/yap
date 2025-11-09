@@ -1,8 +1,10 @@
+import { bootstrapServer } from "./controller/server.js";
+import rooms from "./persistence/persistence.js";
+
+// Seed some rooms in persistence
+for (let i = 1; i <= 5; i++) {
+  rooms.set("Room " + i, { name: "Room " + i, messages: [] });
+}
+
 // Bootstrap server
-import server from "./controller/server.js";
-
-const port = 3000;
-
-server.listen(port, () => {
-  console.log(`App started on port ${port}`);
-});
+bootstrapServer(3000);

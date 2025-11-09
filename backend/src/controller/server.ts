@@ -2,6 +2,7 @@ import { createServer, Server } from "http";
 import express, { Application } from "express";
 import { WebSocketServer } from "ws";
 import setupMessageController from "./message.controller.js";
+import setupMessageGateway, { setupClientMap } from "./message.gateway.js";
 
 /**
  * This is a bit confusing since the ws server wraps the httpServer but express doesn't..
@@ -24,5 +25,17 @@ export const wsServer: WebSocketServer = new WebSocketServer({ server });
 
 // create controllers and gateways on the servers
 setupMessageController(restServer);
+setupMessageGateway(wsServer);
+
+// bootstrap function
+export function bootstrapServer(port: number) {
+  // Initialize clients map for gateway
+  setupClientMap();
+
+  // Bootstrap server
+  server.listen(port, () => {
+    console.log(`App started on port ${port}`);
+  });
+}
 
 export default server;
