@@ -1,8 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import app from "./message.controller.js";
 import rooms, { clearDb } from "../persistence/persistence.js";
 import Room from "../domain/Room.js";
 import Message from "../domain/Message.js";
+import server from "./server.js";
 
 describe("message controller e2e tests", () => {
   let port: number = 9999;
@@ -32,7 +32,8 @@ describe("message controller e2e tests", () => {
   });
 
   beforeAll(() => {
-    app.listen(port, () => {
+    // This starts both the wsServer and restServer (expressServer)
+    server.listen(port, () => {
       console.log(`Test server listening on port ${port}`);
     });
   });

@@ -1,8 +1,8 @@
 // Bootstrap server
-import app from "./controller/message.controller.js";
+import server from "./controller/server.js";
 
 const port = 3000;
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`App started on port ${port}`);
 });
