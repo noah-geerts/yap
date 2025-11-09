@@ -27,7 +27,7 @@ export function addMessage(message: Message) {
 }
 
 // get all messages sorted by largest timestamp first with a limit and offset
-export function getMessages(roomName: string, limit: number, offset: number) {
+export function getMessages(roomName: string, offset: number, limit: number) {
   // If the room doesn't exist we find no messages
   const room: Room | undefined = rooms.get(roomName);
   if (room === undefined) return [];
