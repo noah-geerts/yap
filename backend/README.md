@@ -77,18 +77,19 @@ type Room = {
 ### `GET /messages/:room`
 
 **Description:**  
-Retrieve all messages for the specified room.
+Retrieve all messages for the specified room in order of timestamp descending (most recent first)
 
 **Request:**
 
 - **Method:** `GET`
-- **Path Parameter:** `room` — the name of the room
-- **Body / Query Params:** none
+- **Body:** none
+- **Query Params:**
+  - `limit` (optional, integer) — maximum number of messages to return; defaults to 20.
+  - `offset` (optional, integer) — number of messages to skip from the start of the result set; defaults to 0.
 
 **Responses:**
 
-- ✅ **200 OK** — returns all messages for the given room
-- ❌ **404 Not Found** — if the room does not exist
+- ✅ **200 OK** — returns all messages for the given room, or an empty array if the room doesn't exist
 
 **Return type:**
 `Message[]`

@@ -1,5 +1,5 @@
-import ConstraintViolationError from "../domain/ConstraintViolationError.js";
-import ForeignKeyError from "../domain/ForeignKeyError.js";
+import ConstraintViolationError from "../domain/repository_errors/ConstraintViolationError.js";
+import ForeignKeyError from "../domain/repository_errors/ForeignKeyError.js";
 import Message from "../domain/Message.js";
 import Room from "../domain/Room.js";
 import rooms from "../persistence/persistence.js";
