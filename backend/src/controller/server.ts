@@ -3,6 +3,7 @@ import express, { Application } from "express";
 import { WebSocketServer } from "ws";
 import setupMessageController from "./message.controller.js";
 import setupMessageGateway, { setupClientMap } from "./message.gateway.js";
+import setupRoomController from "./room.controller.js";
 
 /**
  * This is a bit confusing since the ws server wraps the httpServer but express doesn't..
@@ -25,6 +26,7 @@ export const wsServer: WebSocketServer = new WebSocketServer({ server });
 
 // create controllers and gateways on the servers
 setupMessageController(restServer);
+setupRoomController(restServer);
 setupMessageGateway(wsServer);
 
 // bootstrap function

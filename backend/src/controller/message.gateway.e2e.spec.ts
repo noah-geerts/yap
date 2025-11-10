@@ -406,7 +406,7 @@ describe("message gateway e2e tests", () => {
       expect(rooms.get("Room1")?.messages).toEqual([]);
     });
 
-    it("Duplicate message should not be peristed", async () => {
+    it("Duplicate message should not be persisted", async () => {
       // Connect to the server
       const ws = new WebSocket(baseUrl, [], {
         headers: { location: "Room2" },

@@ -18,7 +18,7 @@ For testing I used vitest, because setting up jest to run with typescript and ES
 
 The Controller Layer exposes APIs to the client.
 
-Contains a REST controller and a WebSocket Gateway for sending and retrieving messages. See [Rest API Reference](#rest-api) for more details.
+Contains REST controllers to fetch messages and room names and a WebSocket Gateway for sending and retrieving messages. See [Rest API Reference](#rest-api) for more details.
 
 ### Service Layer
 
@@ -26,7 +26,11 @@ The Service Layer handles business logic.
 
 #### `MessageService`
 
-This is the only service in this version, since we do currently support creation or modification of rooms. At this point it is simply a passthrough to the `MessageRepository` for creating and retrieving messages.
+At this point it is simply a passthrough to the `MessageRepository` for creating and retrieving messages.
+
+#### `RoomService`
+
+At this point it is simply a passthrough to the `RoomRepository` for fetching all room names.
 
 ### Repository Layer
 
@@ -38,7 +42,7 @@ Contains methods for adding a new message to a room and getting recent messages 
 
 #### `RoomRepository`
 
-Contains methods to create and find a room.
+Contains methods to create, find, and list rooms.
 
 ### Persistence Layer
 
@@ -93,6 +97,25 @@ Retrieve all messages for the specified room in order of timestamp descending (m
 
 **Return type:**
 `Message[]`
+
+---
+
+### `GET /rooms`
+
+**Description:**  
+Retrieves an array containing the names of all valid rooms.
+
+**Request:**
+
+- **Method:** `GET`
+- **Body:** none
+
+**Responses:**
+
+- ✅ **200 OK** — returns all room names
+
+**Return type:**
+`string[]`
 
 ---
 
