@@ -109,3 +109,67 @@ All messages from the **server to client** have the `Message` type, indicating t
 ### Client → Server Messages
 
 All messages from the **client to server** have the `Message` type, indicating that the client is sending a new message for the given room.
+
+## E2E Testing Websockets
+
+It is innately difficult to e2e test WebSockets due to their event-driven nature: you cannot use synchronous tests or await them directly. As a result I took the following approach:
+
+### Helper Functions
+
+- `closeAllClients()` closes all WebSocket connections from the server's end. Used to reset gateway state before tests.
+- `waitForAllClientsClosed()` uses a 20ms tick to wait until there are no remaining connections to the server using `WebSocketServer.clients.size === 0`
+- `waitForSocketClosed(ws: WebSocket)` uses a 20ms tick to wait until a single WebSocket is closed
+- `waitForSocketOpen(ws: WebSocket)` waits for a socket to open.
+
+### BeforeEach
+
+The following BeforeEach is used to ensure all connections are closed and all clients are cleared from the map we use to manage clients by room. This ensures a blank slate before each test:
+
+```typescript
+beforeEach(async () => {
+  // Clear all connections
+  closeAllClients();
+  await waitForAllClientsClosed();
+
+  // Clear clients map
+  [...clients.keys()].forEach((key) => clients.set(key, new Set()));
+});
+```
+
+### Test Format
+
+To ensure consistent and deterministic WebSocket behavior (avoiding race conditions or missed event timing), each test follows this structured pattern:
+
+1. **Connect to the server**
+
+   - Create a new WebSocket connection to the test server.
+   - Optionally include headers (e.g., `location`) to simulate valid or invalid room joins.
+
+2. **Wait for the connection to open**
+
+   - Use `await waitForSocketOpen(ws)` to ensure the connection is fully established before making assertions.
+   - Immediately check that any expected state changes (e.g., client registration) have occurred.
+
+3. **Prepare event listeners and tracking variables**
+
+   - Define variables to capture expected outcomes (e.g., messages received, whether the server closed the connection, etc.).
+   - Register `ws.on("message")` and/or `ws.on("close")` handlers to update these variables and, when appropriate, close the socket once all expected events have fired.
+
+4. **Set up a timeout fallback**
+
+   - Use `setTimeout` to forcibly close the client connection after a short delay (e.g., 200 ms) if expected events do not occur.
+   - This ensures the test does not hang and lets you mark whether the closure was **client-initiated** (meaning the server failed to behave as expected).
+
+5. **Wait for complete closure**
+
+   - Use both `await waitForAllClientsClosed()` and `await waitForSocketClosed(ws)` to guarantee that:
+     - The server has cleaned up all client connections.
+     - The client socket has fully transitioned to the `CLOSED` state.
+   - This prevents assertions from running before cleanup is complete.
+
+6. **Assert final state**
+   - Verify that all tracking variables reflect the expected behavior, such as:
+     - The correct message(s) were received (or none if invalid).
+     - The correct side (client or server) closed the connection.
+     - The internal room/client mappings are updated appropriately.
+     - The database is updated or not updated as expected.

@@ -1,26 +1,67 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import rooms, { clearDb } from "../persistence/persistence.js";
 import Room from "../domain/Room.js";
-import server, { bootstrapServer } from "./server.js";
-import WebSocket from "ws";
-import Message from "../domain/Message.js";
+import server, { bootstrapServer, wsServer } from "./server.js";
+import WebSocket, { WebSocketServer } from "ws";
 import { clients } from "./message.gateway.js";
+import Message from "../domain/Message.js";
+
+const TIMEOUT_MS = 200;
+
+// Helper function to close all clients between tests
+function closeAllClients() {
+  wsServer.clients.forEach((client) => {
+    if (
+      client.readyState === client.OPEN ||
+      client.readyState === client.CONNECTING
+    ) {
+      client.close();
+      // Safety kill in case client never responds
+      setTimeout(() => {
+        if (client.readyState !== client.CLOSED) client.terminate();
+      }, 100);
+    }
+  });
+}
+
+// Helper function to wait for all connections to be closed on the server
+async function waitForAllClientsClosed() {
+  return new Promise<void>((resolve) => {
+    const check = () => {
+      if (wsServer.clients.size === 0) return resolve();
+      setTimeout(check, 20);
+    };
+    check();
+  });
+}
+
+// Helper function to wait for a socket to be closed
+async function waitForSocketClosed(ws: WebSocket) {
+  return new Promise<void>((resolve) => {
+    const check = () => {
+      if (ws.readyState === WebSocket.CLOSED) return resolve();
+      setTimeout(check, 20);
+    };
+    check();
+  });
+}
+
+// Helper function to wait for a connection to be opened
+async function waitForSocketOpen(ws: WebSocket) {
+  return new Promise<void>((resolve) => ws.once("open", resolve));
+}
 
 describe("message gateway e2e tests", () => {
   let port: number = 9998;
   let baseUrl: string = `ws://localhost:${port}`;
 
-  beforeEach(() => {
-    // Seed some messages
-    const existingRoom = rooms.get("Room1")!;
-    for (let i = 0; i < 3; i++) {
-      existingRoom.messages.push({
-        room: "Room1",
-        from: "fakeuser",
-        text: "Hello World",
-        timestamp_utc: i,
-      });
-    }
+  beforeEach(async () => {
+    // Clear all connections
+    closeAllClients();
+    await waitForAllClientsClosed();
+
+    // Clear clients map
+    [...clients.keys()].forEach((key) => clients.set(key, new Set()));
   });
 
   afterEach(() => {
@@ -47,46 +88,361 @@ describe("message gateway e2e tests", () => {
   });
 
   describe("Connection", () => {
-    it("Should immediately close connection when no room provided", async () => {
-      await new Promise<void>((resolve, reject) => {
-        // Connect to the websocket server
-        const ws1 = new WebSocket(baseUrl);
+    it("Should get closed by server if no room provided", async () => {
+      // Connect to the server
+      const ws = new WebSocket(baseUrl);
 
-        // Register event handlers
-        ws1.on("close", () => resolve()); // test passes if we are disconnected quickly
-        setTimeout(() => reject(), 200); // fail if we are still connected after 200ms
-        ws1.on("open", () => expect(clients.get("Room1")!.size).toBe(0)); // ensure no new client registered
+      // Wait for the connection to open
+      await waitForSocketOpen(ws);
+      expect(clients.get("Room2")!.size).toBe(0); // expect no clients to be registered
+
+      // Define booleans for expected behavior
+      let clientClosedConnection = false;
+      let closed = false;
+      ws.on("close", () => {
+        closed = true;
       });
+
+      setTimeout(() => {
+        // If the connection is still open after 200ms, indicate that the server didn't
+        // close it as expected and close it from the client instead
+        if (!closed) {
+          clientClosedConnection = true;
+          ws.close();
+        }
+      }, TIMEOUT_MS);
+
+      // Disconnect from the server and wait for it to also close the connection
+      await waitForAllClientsClosed();
+      await waitForSocketClosed(ws);
+
+      // Do checks on booleans
+      expect(closed).toBe(true);
+      expect(clientClosedConnection).toBe(false);
     });
 
-    it("Should immediately close connection when invalid room provided", async () => {
-      await new Promise<void>((resolve, reject) => {
-        // Connect to the websocket server
-        const ws1 = new WebSocket(baseUrl, [], {
-          headers: { location: "nonexistentRoom" },
-        });
-
-        // Register event handlers
-        ws1.on("close", () => resolve()); // test passes if we are disconnected quickly
-        setTimeout(() => reject(), 200); // fail if we are still connected after 200ms
-        ws1.on("open", () => expect(clients.get("Room1")!.size).toBe(0)); // ensure no new client registered
+    it("Should get closed by server if invalid room provided", async () => {
+      // Connect to the server
+      const ws = new WebSocket(baseUrl, [], {
+        headers: { location: "Room3" },
       });
+
+      // Wait for the connection to open
+      await waitForSocketOpen(ws);
+      expect(clients.get("Room2")!.size).toBe(0); // expect no clients to be registered
+
+      // Define booleans for expected behavior
+      let clientClosedConnection = false;
+      let closed = false;
+      ws.on("close", () => {
+        closed = true;
+      });
+
+      setTimeout(() => {
+        // If the connection is still open after 200ms, indicate that the server didn't
+        // close it as expected and close it from the client instead
+        if (!closed) {
+          clientClosedConnection = true;
+          ws.close();
+        }
+      }, TIMEOUT_MS);
+
+      // Disconnect from the server and wait for it to also close the connection
+      await waitForAllClientsClosed();
+      await waitForSocketClosed(ws);
+
+      // Do checks on booleans
+      expect(closed).toBe(true);
+      expect(clientClosedConnection).toBe(false);
     });
 
-    it("Should keep connection open and register client in room when valid room provided", async () => {
-      await new Promise<void>((resolve, reject) => {
-        // Connect to the websocket server
-        const ws1 = new WebSocket(baseUrl, [], {
-          headers: { location: "Room1" },
+    it("Should register client, keep connection open, then unregister client on close", async () => {
+      // Connect to the server
+      const ws = new WebSocket(baseUrl, [], {
+        headers: { location: "Room2" },
+      });
+
+      // Wait for the connection to open
+      await waitForSocketOpen(ws);
+      expect(clients.get("Room2")!.size).toBe(1); // expect the client to be registered
+
+      // Define booleans for expected behavior
+      let clientClosedConnection = false;
+      let closed = false;
+      ws.on("close", () => {
+        closed = true;
+      });
+
+      setTimeout(() => {
+        // If the connection is still open after 200ms, closed it from the client
+        if (!closed) {
+          clientClosedConnection = true;
+          ws.close();
+        }
+      }, TIMEOUT_MS);
+
+      // Disconnect from the server and wait for it to also close the connection
+      await waitForAllClientsClosed();
+      await waitForSocketClosed(ws);
+
+      // Do checks on booleans
+      expect(closed).toBe(true);
+      expect(clientClosedConnection).toBe(true);
+      expect(clients.get("Room2")!.size).toBe(0); // Expect the client to be unregistered
+    });
+  });
+
+  describe("Send Message", () => {
+    it("Message in valid room should persist and be sent to sender", async () => {
+      // Connect to the server
+      const ws = new WebSocket(baseUrl, [], {
+        headers: { location: "Room2" },
+      });
+
+      // Wait for the connection to open
+      await waitForSocketOpen(ws);
+
+      // Define variables for expected behavior
+      let messageReceived: Message | undefined = undefined;
+      let newMessage: Message = {
+        from: "ws",
+        room: "Room2",
+        timestamp_utc: 0,
+        text: "hi",
+      };
+      ws.send(JSON.stringify(newMessage));
+      ws.on("message", (data) => {
+        messageReceived = JSON.parse(data.toString());
+        ws.close();
+      });
+
+      setTimeout(() => {
+        // If the connection is still open (we haven't received the message from the server) after 200ms, close it
+        if (ws.readyState !== WebSocket.CLOSED) ws.close();
+      }, TIMEOUT_MS);
+
+      // Disconnect from the server and wait for it to also close the connection
+      await waitForAllClientsClosed();
+      await waitForSocketClosed(ws);
+
+      // Do checks on variables
+      expect(messageReceived).toEqual(newMessage);
+      expect(rooms.get("Room2")?.messages).toEqual([newMessage]);
+    });
+
+    it("Message in valid room should persist and be sent to all clients in that room", async () => {
+      // Connect to the server
+      const ws1 = new WebSocket(baseUrl, [], {
+        headers: { location: "Room2" },
+      });
+      const ws2 = new WebSocket(baseUrl, [], {
+        headers: { location: "Room2" },
+      });
+      const ws3 = new WebSocket(baseUrl, [], {
+        headers: { location: "Room1" },
+      });
+
+      // Wait for the connections to open
+      await waitForSocketOpen(ws1);
+      await waitForSocketOpen(ws2);
+      await waitForSocketOpen(ws3);
+
+      // Define variables for expected behavior
+      let messageReceived1: Message | undefined = undefined;
+      let messageReceived2: Message | undefined = undefined;
+      let messageReceived3: Message | undefined = undefined;
+      let newMessage: Message = {
+        from: "ws",
+        room: "Room2",
+        timestamp_utc: 0,
+        text: "hi",
+      };
+      ws1.send(JSON.stringify(newMessage));
+      ws1.on("message", (data) => {
+        messageReceived1 = JSON.parse(data.toString());
+        ws1.close();
+      });
+      ws2.on("message", (data) => {
+        messageReceived2 = JSON.parse(data.toString());
+        ws2.close();
+      });
+      ws3.on("message", (data) => {
+        messageReceived3 = JSON.parse(data.toString());
+        ws3.close();
+      });
+
+      setTimeout(() => {
+        // If the connection is still open (we haven't received the message from the server) after 200ms, close it
+        if (ws1.readyState !== WebSocket.CLOSED) ws1.close();
+        if (ws2.readyState !== WebSocket.CLOSED) ws2.close();
+        if (ws3.readyState !== WebSocket.CLOSED) ws3.close();
+      }, TIMEOUT_MS);
+
+      // Disconnect from the server and wait for it to also close the connection
+      await waitForAllClientsClosed();
+      await waitForSocketClosed(ws1);
+      await waitForSocketClosed(ws2);
+      await waitForSocketClosed(ws3);
+
+      // Do checks on variables
+      expect(messageReceived1).toEqual(newMessage); // ws1 is in Room2 so it should receive the new Message
+      expect(messageReceived2).toEqual(newMessage); // ws2 is in Room2 so it should receive the new Message
+      expect(messageReceived3).toEqual(undefined); // ws3 is in Room1 so it should get no new message
+      expect(rooms.get("Room2")?.messages).toEqual([newMessage]);
+    });
+
+    it("Non-JSON Message should not be sent or persisted", async () => {
+      // Connect to the server
+      const ws = new WebSocket(baseUrl, [], {
+        headers: { location: "Room2" },
+      });
+
+      // Wait for the connection to open
+      await waitForSocketOpen(ws);
+
+      // Define variables for expected behavior
+      let messageReceived: Message | undefined = undefined;
+      ws.send("NOTJSON");
+      ws.on("message", (data) => {
+        messageReceived = JSON.parse(data.toString());
+        ws.close();
+      });
+
+      setTimeout(() => {
+        // If the connection is still open (we haven't received the message from the server) after 200ms, close it
+        if (ws.readyState !== WebSocket.CLOSED) ws.close();
+      }, TIMEOUT_MS);
+
+      // Disconnect from the server and wait for it to also close the connection
+      await waitForAllClientsClosed();
+      await waitForSocketClosed(ws);
+
+      // Do checks on variables
+      expect(messageReceived).toEqual(undefined);
+      expect(rooms.get("Room2")?.messages).toEqual([]);
+      expect(rooms.get("Room1")?.messages).toEqual([]);
+    });
+
+    it.each([
+      [{ room: "Room2", from: "sender", timestamp_utc: 0 }], // missing field text
+      [{ from: "sender", timestamp_utc: 0, text: "hi" }], // missing field room
+      [{ room: "Room2", timestamp_utc: 0, text: "hi" }], // missing field from
+      [{ room: "Room2", from: "sender", text: "hi" }], // missing field timestamp_utc
+      [{ room: "Room2", from: 0, timestamp_utc: 0, text: "hi" }], // from must be a string
+      [{ room: 2.2, from: "sender", timestamp_utc: 0, text: "hi" }], // room must be a string
+      [{ room: "Room2", from: "sender", timestamp_utc: 0, text: false }], // text must be a string
+      [{ room: "Room2", from: 0, timestamp_utc: true, text: "hi" }], // timestamp_utc must be a number
+      [{}], // empty object is not a Message
+    ])(
+      "Incorrect Message objects should not be sent or persisted",
+      async (newMessage: any) => {
+        // Connect to the server
+        const ws = new WebSocket(baseUrl, [], {
+          headers: { location: "Room2" },
         });
 
-        // Register event handlers
-        ws1.on("close", () => reject()); // test fails if we are disconnected
-        ws1.on("open", () => expect(clients.get("Room1")!.size).toBe(1)); // client registered on connection
+        // Wait for the connection to open
+        await waitForSocketOpen(ws);
+
+        // Define variables for expected behavior
+        let messageReceived: Message | undefined = undefined;
+        ws.send(JSON.stringify(newMessage));
+        ws.on("message", (data) => {
+          messageReceived = JSON.parse(data.toString());
+          ws.close();
+        });
+
         setTimeout(() => {
-          resolve();
-        }, 200); // pass if we are still connected after 200ms
+          // If the connection is still open (we haven't received the message from the server) after 200ms, close it
+          if (ws.readyState !== WebSocket.CLOSED) ws.close();
+        }, TIMEOUT_MS);
+
+        // Disconnect from the server and wait for it to also close the connection
+        await waitForAllClientsClosed();
+        await waitForSocketClosed(ws);
+
+        // Do checks on variables
+        expect(messageReceived).toEqual(undefined);
+        expect(rooms.get("Room2")?.messages).toEqual([]);
+        expect(rooms.get("Room1")?.messages).toEqual([]);
+      }
+    );
+
+    it("Message in invalid room should not be sent or persisted", async () => {
+      // Connect to the server
+      const ws = new WebSocket(baseUrl, [], {
+        headers: { location: "Room2" },
       });
+
+      // Wait for the connection to open
+      await waitForSocketOpen(ws);
+
+      // Define variables for expected behavior
+      let messageReceived: Message | undefined = undefined;
+      let newMessage: Message = {
+        from: "ws",
+        room: "nonexistentRoom",
+        timestamp_utc: 0,
+        text: "hi",
+      };
+      ws.send(JSON.stringify(newMessage));
+      ws.on("message", (data) => {
+        messageReceived = JSON.parse(data.toString());
+        ws.close();
+      });
+
+      setTimeout(() => {
+        // If the connection is still open (we haven't received the message from the server) after 200ms, close it
+        if (ws.readyState !== WebSocket.CLOSED) ws.close();
+      }, TIMEOUT_MS);
+
+      // Disconnect from the server and wait for it to also close the connection
+      await waitForAllClientsClosed();
+      await waitForSocketClosed(ws);
+
+      // Do checks on variables
+      expect(messageReceived).toEqual(undefined);
+      expect(rooms.get("Room2")?.messages).toEqual([]);
+      expect(rooms.get("Room1")?.messages).toEqual([]);
+    });
+
+    it("Duplicate message should not be peristed", async () => {
+      // Connect to the server
+      const ws = new WebSocket(baseUrl, [], {
+        headers: { location: "Room2" },
+      });
+
+      // Wait for the connection to open
+      await waitForSocketOpen(ws);
+
+      // Define variables for expected behavior
+      let messageReceived: Message | undefined = undefined;
+      let newMessage: Message = {
+        from: "ws",
+        room: "Room2",
+        timestamp_utc: 0,
+        text: "hi",
+      };
+      rooms.get("Room2")!.messages.push(newMessage); // push the new message already
+      ws.send(JSON.stringify(newMessage));
+      ws.on("message", (data) => {
+        messageReceived = JSON.parse(data.toString());
+        ws.close();
+      });
+
+      setTimeout(() => {
+        // If the connection is still open (we haven't received the message from the server) after 200ms, close it
+        if (ws.readyState !== WebSocket.CLOSED) ws.close();
+      }, TIMEOUT_MS);
+
+      // Disconnect from the server and wait for it to also close the connection
+      await waitForAllClientsClosed();
+      await waitForSocketClosed(ws);
+
+      // Do checks on variables
+      expect(messageReceived).toEqual(undefined);
+      expect(rooms.get("Room2")?.messages).toEqual([newMessage]); // should only have one copy
+      expect(rooms.get("Room1")?.messages).toEqual([]);
     });
   });
 });

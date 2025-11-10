@@ -29,8 +29,6 @@ export default function setupMessageGateway(wsServer: WebSocketServer) {
 
     // Otherwise register the connection and create event handlers
     room.add(client);
-    console.log(clients);
-    console.log("adding client");
 
     // Receive message handler
     client.on("message", (data) => {
@@ -38,7 +36,7 @@ export default function setupMessageGateway(wsServer: WebSocketServer) {
         // Persist the new message
         const newMessage: Message = JSON.parse(data.toString()); // throws an error if data cannot be parsed as JSON
         if (!isMessage(newMessage)) throw new TypeError(); // throw a type error if the data is not a valid Message object
-        addMessage(newMessage);
+        addMessage(newMessage); // throws an error if the message cannot be persisted
 
         // If successful, send it to all clients in the room
         room.forEach((roomClient) => {
@@ -48,10 +46,8 @@ export default function setupMessageGateway(wsServer: WebSocketServer) {
     });
 
     // When the client disconnects, remove them from the room
-    client.on("close", (client: WebSocket) => {
+    client.on("close", () => {
       room.delete(client);
-      console.log(clients);
-      console.log("removing client");
     });
   });
 }
