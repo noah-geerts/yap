@@ -10,7 +10,7 @@ For testing I used vitest, because setting up jest to run with typescript and ES
 2. Run `npm install`
 3. Run `npx tsc` to compile the project
 4. Run `node dist/index.js` to start the project
-5. Run `npx jest` to test the project
+5. Run `npx vitest` to test the project
 
 ## Layered (clean-esque) Architecture
 
@@ -121,7 +121,7 @@ Retrieves an array containing the names of all valid rooms.
 
 ## WebSocket
 
-All WebSocket messages use the **text opcode (`0x2`)** and contain **stringified JSON data**, which should be parsed on the receiving end.
+**All client connections are expected to include the room query param to specify which room the client wants to connect to. Only connections with valid rooms will be accepted (see the e2e tests).** All WebSocket messages use the **text opcode (`0x2`)** and contain **stringified JSON data**, which should be parsed on the receiving end.
 
 ### Server → Client Messages
 

@@ -16,7 +16,13 @@ export function setupClientMap() {
 
 export default function setupMessageGateway(wsServer: WebSocketServer) {
   wsServer.on("connection", (client: WebSocket, request: IncomingMessage) => {
-    const requestedRoom: string | undefined = request.headers.location;
+    let requestedRoom: string | null = null;
+    try {
+      const url = request.url
+        ? new URL(request.url, `http://${request.headers.host}`)
+        : undefined;
+      requestedRoom = url ? url.searchParams.get("room") : null;
+    } catch (e) {} // catches errors parsing url and leaves requestRoom as null
 
     // Close connection with no valid room
     const room: Set<WebSocket> | undefined = clients.get(

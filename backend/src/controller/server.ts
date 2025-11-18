@@ -4,6 +4,7 @@ import { WebSocketServer } from "ws";
 import setupMessageController from "./message.controller.js";
 import setupMessageGateway, { setupClientMap } from "./message.gateway.js";
 import setupRoomController from "./room.controller.js";
+import cors from "cors";
 
 /**
  * This is a bit confusing since the ws server wraps the httpServer but express doesn't..
@@ -23,6 +24,15 @@ import setupRoomController from "./room.controller.js";
 export const restServer: Application = express();
 const server: Server = createServer(restServer);
 export const wsServer: WebSocketServer = new WebSocketServer({ server });
+
+// configure cors
+const corsOptions: cors.CorsOptions = {
+  origin: ["http://localhost:5173"],
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Allowed HTTP methods
+  credentials: true, // Allow cookies and authentication headers
+  optionsSuccessStatus: 204, // Status for successful OPTIONS requests
+};
+restServer.use(cors(corsOptions));
 
 // create controllers and gateways on the servers
 setupMessageController(restServer);

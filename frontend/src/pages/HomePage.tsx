@@ -1,10 +1,19 @@
-import { Layout, Typography, Flex, Select, Button, theme, Input } from "antd";
+import {
+  Layout,
+  Typography,
+  Flex,
+  Select,
+  Button,
+  theme,
+  Input,
+  Spin,
+} from "antd";
 import type { Page } from "../App";
+import { useEffect, useState } from "react";
+import type { State } from "../domain/State";
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
-
-const rooms = ["general", "random", "support", "development"];
 
 type HomePageProps = {
   setCurrentPage: React.Dispatch<React.SetStateAction<Page>>;
@@ -22,11 +31,69 @@ export default function HomePage({
   setName,
 }: HomePageProps) {
   const token = theme.useToken();
+  const [state, setState] = useState<State>("loading");
+  const [rooms, setRooms] = useState([]);
+
+  // Upon the user seeing the page, load the rooms list
+  useEffect(() => {
+    fetch("http://localhost:3000/rooms")
+      .then((response) => response.json())
+      .then((data) => {
+        setRooms(data);
+        setState("ok");
+      })
+      .catch((e) => setState("error"));
+  }, []);
 
   const handleJoin = () => {
     if (selectedRoom === undefined) return;
     setCurrentPage("chat");
   };
+
+  const content = (
+    <Content style={{ padding: "48px 32px" }}>
+      <Flex vertical gap={32} align="center" style={{ width: "100%" }}>
+        <Title level={2} style={{ textAlign: "center", marginBottom: 0 }}>
+          Welcome to Yap 💬
+        </Title>
+        <Text type="secondary" style={{ textAlign: "center" }}>
+          Select a room below to jump into the conversation.
+        </Text>
+        <Flex
+          vertical
+          gap={16}
+          align="center"
+          style={{ maxWidth: 420, width: "100%" }}
+        >
+          <Text strong>Select a room</Text>
+          <Select
+            placeholder="Choose a room"
+            value={selectedRoom}
+            onChange={setSelectedRoom}
+            options={rooms.map((r) => ({ label: r, value: r }))}
+            size="large"
+            loading={state === "loading"}
+          />
+          <Text strong>Choose a name</Text>
+          <Input
+            placeholder="Choose a name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            size="large"
+          />
+          <Button
+            type="primary"
+            size="large"
+            disabled={!selectedRoom}
+            onClick={handleJoin}
+            block
+          >
+            Join Room
+          </Button>
+        </Flex>
+      </Flex>
+    </Content>
+  );
 
   return (
     <Layout style={{ minHeight: "100%" }}>
@@ -43,46 +110,7 @@ export default function HomePage({
           Welcome
         </Title>
       </Header>
-      <Content style={{ padding: "48px 32px" }}>
-        <Flex vertical gap={32} align="center" style={{ width: "100%" }}>
-          <Title level={2} style={{ textAlign: "center", marginBottom: 0 }}>
-            Welcome to Yap 💬
-          </Title>
-          <Text type="secondary" style={{ textAlign: "center" }}>
-            Select a room below to jump into the conversation.
-          </Text>
-          <Flex
-            vertical
-            gap={16}
-            align="center"
-            style={{ maxWidth: 420, width: "100%" }}
-          >
-            <Text strong>Select a room</Text>
-            <Select
-              placeholder="Choose a room"
-              value={selectedRoom}
-              onChange={setSelectedRoom}
-              options={rooms.map((r) => ({ label: r, value: r }))}
-              size="large"
-            />
-            <Input
-              placeholder="Choose a name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              size="large"
-            />
-            <Button
-              type="primary"
-              size="large"
-              disabled={!selectedRoom}
-              onClick={handleJoin}
-              block
-            >
-              Join Room
-            </Button>
-          </Flex>
-        </Flex>
-      </Content>
+      {content}
       <Footer style={{ textAlign: "center" }}>
         <Text type="secondary">Yap Demo Interface</Text>
       </Footer>
