@@ -1,4 +1,4 @@
-import { Layout, Typography, Flex, Select, Button, theme } from "antd";
+import { Layout, Typography, Flex, Select, Button, theme, Input } from "antd";
 import type { Page } from "../App";
 
 const { Header, Content, Footer } = Layout;
@@ -10,12 +10,16 @@ type HomePageProps = {
   setCurrentPage: React.Dispatch<React.SetStateAction<Page>>;
   selectedRoom: string | undefined;
   setSelectedRoom: React.Dispatch<React.SetStateAction<string | undefined>>;
+  name: string | undefined;
+  setName: React.Dispatch<React.SetStateAction<string>>;
 };
 
 export default function HomePage({
   setCurrentPage,
   selectedRoom,
   setSelectedRoom,
+  name,
+  setName,
 }: HomePageProps) {
   const token = theme.useToken();
 
@@ -59,6 +63,12 @@ export default function HomePage({
               value={selectedRoom}
               onChange={setSelectedRoom}
               options={rooms.map((r) => ({ label: r, value: r }))}
+              size="large"
+            />
+            <Input
+              placeholder="Choose a name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               size="large"
             />
             <Button

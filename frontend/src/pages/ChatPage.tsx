@@ -24,10 +24,15 @@ type Message = {
 
 type ChatPageProps = {
   room: string;
+  name: string;
   setCurrentPage: React.Dispatch<React.SetStateAction<Page>>;
 };
 
-export default function ChatPage({ room, setCurrentPage }: ChatPageProps) {
+export default function ChatPage({
+  room,
+  name,
+  setCurrentPage,
+}: ChatPageProps) {
   const token = theme.useToken();
   const [messages, setMessages] = useState<Message[]>(() => [
     {
@@ -55,7 +60,7 @@ export default function ChatPage({ room, setCurrentPage }: ChatPageProps) {
     if (!composeText.trim()) return;
     const newMessage: Message = {
       room: room,
-      from: "You",
+      from: name,
       timestamp_utc: Date.now(),
       text: composeText.trim(),
     };
