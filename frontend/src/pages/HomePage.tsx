@@ -1,13 +1,4 @@
-import {
-  Layout,
-  Typography,
-  Flex,
-  Select,
-  Button,
-  theme,
-  Input,
-  Spin,
-} from "antd";
+import { Layout, Typography, Flex, Select, Button, theme, Input } from "antd";
 import type { Page } from "../App";
 import { useEffect, useState } from "react";
 import type { State } from "../domain/State";
@@ -36,13 +27,13 @@ export default function HomePage({
 
   // Upon the user seeing the page, load the rooms list
   useEffect(() => {
-    fetch("http://localhost:3000/rooms")
+    fetch(import.meta.env.VITE_API_URL + "/rooms")
       .then((response) => response.json())
       .then((data) => {
         setRooms(data);
         setState("ok");
       })
-      .catch((e) => setState("error"));
+      .catch(() => setState("error"));
   }, []);
 
   const handleJoin = () => {

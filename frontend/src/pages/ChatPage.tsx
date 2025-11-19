@@ -2,7 +2,6 @@ import {
   Layout,
   Typography,
   Flex,
-  Select,
   Button,
   theme,
   Input,
@@ -10,7 +9,7 @@ import {
   Tag,
   Spin,
 } from "antd";
-const { Header, Content, Footer } = Layout;
+const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 import { ArrowLeftOutlined, SendOutlined } from "@ant-design/icons";
 import { useEffect, useRef, useState } from "react";
@@ -45,16 +44,18 @@ export default function ChatPage({
   // and establish a WebSocket connection to the backend for live messages
   useEffect(() => {
     // Fetch old messages
-    fetch(`http://localhost:3000/messages/${room}`)
+    fetch(import.meta.env.VITE_API_URL + `/messages/${room}`)
       .then((response) => response.json())
       .then((data) => {
         setMessages(data);
         setState("ok");
       })
-      .catch((e) => setState("error"));
+      .catch(() => setState("error"));
 
     // Websocket connection
-    ws.current = new WebSocket(`ws://localhost:3000/messages?room=${room}`);
+    ws.current = new WebSocket(
+      import.meta.env.VITE_WS_URL + `/messages?room=${room}`
+    );
     ws.current.onopen = () => {
       console.log("OPEN");
     };
