@@ -16,16 +16,17 @@ import { useEffect, useRef, useState } from "react";
 import type { Page } from "../App";
 import type { State } from "../domain/State";
 import type { Message } from "../domain/Message";
+import type { User } from "@auth0/auth0-react";
 
 type ChatPageProps = {
   room: string;
-  name: string;
+  userInfo: User;
   setCurrentPage: React.Dispatch<React.SetStateAction<Page>>;
 };
 
 export default function ChatPage({
   room,
-  name,
+  userInfo,
   setCurrentPage,
 }: ChatPageProps) {
   const token = theme.useToken();
@@ -79,10 +80,10 @@ export default function ChatPage({
   }, [room]);
 
   const handleSend = () => {
-    if (!composeText.trim()) return;
+    if (!composeText.trim() || !userInfo.name) return; // TODO handle the user's name not being loaded more elegantly
     const newMessage: Message = {
       room: room,
-      from: name,
+      from: userInfo.name,
       timestamp_utc: Date.now(),
       text: composeText.trim(),
     };

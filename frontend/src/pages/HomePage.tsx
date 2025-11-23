@@ -3,6 +3,7 @@ import type { Page } from "../App";
 import { useEffect, useState } from "react";
 import type { State } from "../domain/State";
 import { CheckOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
+import type { User } from "@auth0/auth0-react";
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
@@ -11,22 +12,22 @@ type HomePageProps = {
   setCurrentPage: React.Dispatch<React.SetStateAction<Page>>;
   selectedRoom: string | undefined;
   setSelectedRoom: React.Dispatch<React.SetStateAction<string | undefined>>;
-  name: string | undefined;
-  setName: React.Dispatch<React.SetStateAction<string>>;
+  userInfo: User;
+  setUserInfo: React.Dispatch<React.SetStateAction<User>>;
 };
 
 export default function HomePage({
   setCurrentPage,
   selectedRoom,
   setSelectedRoom,
-  name,
-  setName,
+  userInfo,
+  setUserInfo,
 }: HomePageProps) {
   const token = theme.useToken();
   const [state, setState] = useState<State>("loading");
   const [rooms, setRooms] = useState([]);
   const [editingNameInput, setEditingNameInput] = useState(false);
-  const [nameInput, setNameInput] = useState(name);
+  const [nameInput, setNameInput] = useState<string>(userInfo.name || "");
 
   // Upon the user seeing the page, load the rooms list
   useEffect(() => {

@@ -61,3 +61,29 @@ The backend is authenticated using JWT. The JWT keyset (public + private RSA key
 The **Auth0 Management API** is used to manage users, settings, and essentially anything else you can do in the Auth0 dashboard. Of course, this means we don't want users to have full access to this API, so if you want to do anything dangerous, you can make a request from the backend including the client secret to get a JWT for the **Auth0 Management API** from the **Auth0 Authentication API** with whatever scope (permissions) you require, and then that JWT can be used to make **Auth0 Management API** requests.
 
 Alternatively, if you only need to make safe, per-user requests in your app, like in our use case, you can use the **Auth0 React SDK** to get a JWT for the **Auth0 Management API** that only includes scopes for the logged in user. This allows you to safely call the **Auth0 Management API** directly from the frontend for simple use cases like fetching or modifying user info, which we do in Yap.
+
+### Scope
+
+Something very annoying about Auth0 is how it manages scope. When you Initialize the `Auth0Provider` in the React SDK, you can specify an audience (Auth0-registered API), and the scope (permissions) permitted for that API. When the user logs in, they will consent to this (audience, scope) pair, and then any `getAccessTokenSilently()` requests will work as intended. If you instead wanted to `getAccessTokenSilently()` for another (audience, scope) pair, it will fail, because it needs explicit consent for that pair as well. For example a custom API "custom" with scope "custom:all":
+
+```typescript
+getAccessTokenSilently({
+      // Explicitly specify the scope and API this
+      authorizationParams: {
+        scope:
+          "custom:all",
+        audience: "custom",
+      },
+```
+
+would fail, and you would need to use getAccessTokenWithPopup instead so the user can consent. Thankfully, if your additional APIs do not have any custom scope, for example the Yap Backend, then:
+
+```typescript
+getAccessTokenSilently({
+      // Explicitly specify the scope and API this
+      authorizationParams: {
+        audience: "yap-backend-url",
+      },
+```
+
+will work, since the user does not need to consent to the default scope. This means that as long as you don't use custom scopes, the user only needs to consent once on login for the frontend to be able to interact with all of your custom APIs as well as the **Auth0 Management API**, as long as you ensure to get consent for the management API audience with the user management scopes in `Auth0Provider`.
