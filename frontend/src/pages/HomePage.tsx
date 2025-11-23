@@ -2,6 +2,7 @@ import { Layout, Typography, Flex, Select, Button, theme, Input } from "antd";
 import type { Page } from "../App";
 import { useEffect, useState } from "react";
 import type { State } from "../domain/State";
+import { CheckOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
@@ -24,6 +25,8 @@ export default function HomePage({
   const token = theme.useToken();
   const [state, setState] = useState<State>("loading");
   const [rooms, setRooms] = useState([]);
+  const [editingNameInput, setEditingNameInput] = useState(false);
+  const [nameInput, setNameInput] = useState(name);
 
   // Upon the user seeing the page, load the rooms list
   useEffect(() => {
@@ -65,12 +68,36 @@ export default function HomePage({
             size="large"
             loading={state === "loading"}
           />
-          <Text strong>Choose a name</Text>
+          <Text strong>Your name</Text>
           <Input
-            placeholder="Choose a name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            disabled={!editingNameInput}
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
             size="large"
+            suffix={
+              editingNameInput ? (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<CheckOutlined />}
+                  // when the user hits save, send an API call to the auth0 management API to update
+                  // the name field on the user object, and either set the global user object to the returned
+                  // updated object if that's how the API works, or manually update it depending on whether
+                  // this API call is successful
+                  onClick={() => setEditingNameInput(!editingNameInput)}
+                  style={{ border: "none" }}
+                />
+              ) : (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => setEditingNameInput(!editingNameInput)}
+                  style={{ border: "none" }}
+                />
+              )
+            }
           />
           <Button
             type="primary"

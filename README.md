@@ -33,3 +33,31 @@ The main objective of this project is to test my understanding of WebSockets, En
 - When you join that room, a duplex connection with the server is initiated
 - You can push messages to the server, and the server can push new messages to you for that room
 - Rooms are handled manually by the server since the basic WebSocket protocol only allows you to open a bi-directional communication channel with the server as a whole, and does not specify subchannels or namespaces
+
+## Authentication (Auth0)
+
+![Authentication Diagram](auth-diagram.png)
+
+**Auth0 Authentication API**
+Basically it is used to sign up for or log into the tenant as a whole, and it can be used to request tokens for APIs within the tenant, which are accessed individually.
+
+- Sign up requests
+- Log in requests (returns a JWT for the tenant)
+- Refresh requests (returns a JWT for the tenant)
+- Requests for JWT's for the tenant's APIs (Management API, custom API's)
+
+Note that one JWT private + public keyset is used for the entire Auth0 tenant, and that API access to different APIs (Management vs custom) is based on the audience (`aud`) claim inside the JWT signed by the **Auth0 Authentication API**.
+
+### Frontend Authentication
+
+The frontend is authenticated using the **Auth0 React SDK**. This provides a global context that automatically performs login actions by sending requests to the publicly accessible **Auth0 Authentication API**, and then holds states like `isAuthenticated` or `user`, and exposes functions like `logInWithRedirect()`.
+
+### Backend Authentication
+
+The backend is authenticated using JWT. The JWT keyset (public + private RSA keys) is managed by Auth0. To retrieve a JWT for the backend, the **Auth0 React SDK** requests it from the **Auth0 Authentication API**. The backend fetches the public key (ocassionally rotated) from a fixed endpoint and uses that public key to verify the JWT attached from frontend API requests. The private key is securely store on Auth0 servers and is used to sign the JWT before giving it to the frontend.
+
+### Auth0 Management API Authentication
+
+The **Auth0 Management API** is used to manage users, settings, and essentially anything else you can do in the Auth0 dashboard. Of course, this means we don't want users to have full access to this API, so if you want to do anything dangerous, you can make a request from the backend including the client secret to get a JWT for the **Auth0 Management API** from the **Auth0 Authentication API** with whatever scope (permissions) you require, and then that JWT can be used to make **Auth0 Management API** requests.
+
+Alternatively, if you only need to make safe, per-user requests in your app, like in our use case, you can use the **Auth0 React SDK** to get a JWT for the **Auth0 Management API** that only includes scopes for the logged in user. This allows you to safely call the **Auth0 Management API** directly from the frontend for simple use cases like fetching or modifying user info, which we do in Yap.

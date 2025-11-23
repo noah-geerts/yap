@@ -12,3 +12,5 @@ Vite will automatically load any environment variables based on the mode. For pr
 
 - VITE_API_URL: the base URL of the backend. For development this will be `http://localhost:3000` by default because the backend port is configured to 3000 by default.
 - VITE_WS_URL: similar to the api url, but for initiating websocket connections. Default `ws://localhost:3000` for dev.
+- VITE_AUTH0_DOMAIN: provided by auth0 and used to connect to their services via the SDK
+- VITE_AUTH0_CLIENT_ID: provided by auth0 and used to connect to their services via the SDK
