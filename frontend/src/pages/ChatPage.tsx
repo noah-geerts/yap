@@ -80,10 +80,10 @@ export default function ChatPage({
   }, [room]);
 
   const handleSend = () => {
-    if (!composeText.trim() || !userInfo.name) return; // TODO handle the user's name not being loaded more elegantly
+    if (!composeText.trim() || !userInfo.user_metadata.name) return; // TODO handle the user's name not being loaded more elegantly
     const newMessage: Message = {
       room: room,
-      from: userInfo.name,
+      from: userInfo.user_metadata.name,
       timestamp_utc: Date.now(),
       text: composeText.trim(),
     };

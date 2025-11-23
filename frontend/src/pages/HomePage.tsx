@@ -2,8 +2,13 @@ import { Layout, Typography, Flex, Select, Button, theme, Input } from "antd";
 import type { Page } from "../App";
 import { useEffect, useState } from "react";
 import type { State } from "../domain/State";
-import { CheckOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
-import type { User } from "@auth0/auth0-react";
+import {
+  CheckOutlined,
+  EditOutlined,
+  LoadingOutlined,
+  SaveOutlined,
+} from "@ant-design/icons";
+import { useAuth0, type User } from "@auth0/auth0-react";
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
@@ -16,6 +21,8 @@ type HomePageProps = {
   setUserInfo: React.Dispatch<React.SetStateAction<User>>;
 };
 
+type InputState = "loading" | "editing" | "ok";
+
 export default function HomePage({
   setCurrentPage,
   selectedRoom,
@@ -26,8 +33,11 @@ export default function HomePage({
   const token = theme.useToken();
   const [state, setState] = useState<State>("loading");
   const [rooms, setRooms] = useState([]);
-  const [editingNameInput, setEditingNameInput] = useState(false);
-  const [nameInput, setNameInput] = useState<string>(userInfo.name || "");
+  const [nameInputState, setNameInputState] = useState<InputState>("ok");
+  const [nameInput, setNameInput] = useState<string>(
+    userInfo.user_metadata.name || ""
+  );
+  const { user, getAccessTokenSilently } = useAuth0();
 
   // Upon the user seeing the page, load the rooms list
   useEffect(() => {
@@ -40,9 +50,94 @@ export default function HomePage({
       .catch(() => setState("error"));
   }, []);
 
+  const handleSaveName: React.MouseEventHandler<HTMLElement> = () => {
+    setNameInputState("loading");
+
+    // If the user sub isn't available we have an authentication issue. Reset the name input and go back to ok state
+    if (user?.sub === undefined || nameInput === "") {
+      setNameInput(userInfo.user_metadata.name || "");
+      setNameInputState("ok");
+      return;
+    }
+
+    // Fetch a jwt for the Auth0 Management API
+    getAccessTokenSilently({
+      // Explicitly specify the scope and API for this JWT
+      authorizationParams: {
+        scope:
+          "read:current_user update:current_user_identities update:current_user_metadata",
+        audience: "https://dev-h60bzgedqbu866oj.us.auth0.com/api/v2/",
+      },
+    })
+      .then((jwt) => {
+        // Send a patch request to update the user's information
+        fetch(
+          `https://dev-h60bzgedqbu866oj.us.auth0.com/api/v2/users/${user.sub}`,
+          {
+            method: "PATCH",
+            headers: {
+              authorization: `Bearer ${jwt}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ user_metadata: { name: nameInput } }),
+          }
+        )
+          .then((response) => {
+            if (!response.ok) throw new Error(response.statusText);
+            return response.json();
+          })
+          .then((data) => {
+            setUserInfo(data);
+            setNameInputState("ok");
+          })
+          .catch((error) => {
+            console.log(error);
+            setNameInput(userInfo.user_metadata.name || "");
+            setNameInputState("ok");
+          });
+      })
+      // If we can't get an access token we can't update the user info, so fall back
+      .catch((error) => {
+        console.log(error);
+        setNameInput(userInfo.user_metadata.name || "");
+        setNameInputState("ok");
+      });
+  };
+
   const handleJoin = () => {
-    if (selectedRoom === undefined) return;
+    if (selectedRoom === undefined || nameInputState !== "ok") return;
     setCurrentPage("chat");
+  };
+
+  const nameInputSuffix = () => {
+    switch (nameInputState) {
+      case "editing":
+        return (
+          <Button
+            type="primary"
+            size="small"
+            icon={<CheckOutlined />}
+            // when the user hits save, send an API call to the auth0 management API to update
+            // the name field on the user object, and either set the global user object to the returned
+            // updated object if that's how the API works, or manually update it depending on whether
+            // this API call is successful
+            onClick={handleSaveName}
+            style={{ border: "none" }}
+          />
+        );
+      case "ok":
+        return (
+          <Button
+            type="primary"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => setNameInputState("editing")}
+            style={{ border: "none" }}
+          />
+        );
+      default:
+        return <LoadingOutlined />;
+    }
   };
 
   const content = (
@@ -72,38 +167,16 @@ export default function HomePage({
           <Text strong>Your name</Text>
           <Input
             placeholder="Your name"
-            disabled={!editingNameInput}
+            disabled={nameInputState !== "editing"}
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
             size="large"
-            suffix={
-              editingNameInput ? (
-                <Button
-                  type="primary"
-                  size="small"
-                  icon={<CheckOutlined />}
-                  // when the user hits save, send an API call to the auth0 management API to update
-                  // the name field on the user object, and either set the global user object to the returned
-                  // updated object if that's how the API works, or manually update it depending on whether
-                  // this API call is successful
-                  onClick={() => setEditingNameInput(!editingNameInput)}
-                  style={{ border: "none" }}
-                />
-              ) : (
-                <Button
-                  type="primary"
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={() => setEditingNameInput(!editingNameInput)}
-                  style={{ border: "none" }}
-                />
-              )
-            }
+            suffix={nameInputSuffix()}
           />
           <Button
             type="primary"
             size="large"
-            disabled={!selectedRoom}
+            disabled={!selectedRoom || nameInputState !== "ok"}
             onClick={handleJoin}
             block
           >

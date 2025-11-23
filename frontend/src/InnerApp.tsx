@@ -25,7 +25,7 @@ export default function InnerApp() {
 
     // Fetch a jwt for the Auth0 Management API
     getAccessTokenSilently({
-      // Explicitly specify the scope and API this
+      // Explicitly specify the scope and API for this JWT
       authorizationParams: {
         scope:
           "read:current_user update:current_user_identities update:current_user_metadata",
