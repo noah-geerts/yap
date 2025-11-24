@@ -1,4 +1,13 @@
-import { Layout, Typography, Flex, Select, Button, theme, Input } from "antd";
+import {
+  Layout,
+  Typography,
+  Flex,
+  Select,
+  Button,
+  theme,
+  Input,
+  notification,
+} from "antd";
 import type { Page } from "../App";
 import { useEffect, useState } from "react";
 import type { State } from "../domain/State";
@@ -31,25 +40,54 @@ export default function HomePage({
   setUserInfo,
 }: HomePageProps) {
   const token = theme.useToken();
-  const [state, setState] = useState<State>("loading");
+  const [loading, setLoading] = useState(false);
+  const [api, contextHolder] = notification.useNotification();
   const [rooms, setRooms] = useState([]);
   const [nameInputState, setNameInputState] = useState<InputState>("ok");
   const [nameInput, setNameInput] = useState<string>(
     userInfo.user_metadata.name || ""
   );
-  const { user, getAccessTokenSilently } = useAuth0();
+  const { user, getAccessTokenSilently, getAccessTokenWithPopup } = useAuth0();
 
-  // Upon the user seeing the page, load the rooms list
-  useEffect(() => {
-    fetch(import.meta.env.VITE_API_URL + "/rooms")
-      .then((response) => response.json())
-      .then((data) => {
-        setRooms(data);
-        setState("ok");
+  // Function to load rooms list. Can't be triggered in a useEffect because it opens a popup and browsers will block it.
+  const loadRooms = () => {
+    getAccessTokenWithPopup({
+      authorizationParams: {
+        scope:
+          "read:current_user update:current_user_identities update:current_user_metadata",
+        audience: "https://dev-h60bzgedqbu866oj.us.auth0.com/api/v2/",
+      },
+    })
+      .then((jwt) => {
+        console.log(jwt);
+        console.log("HI");
+        fetch(import.meta.env.VITE_API_URL + "/rooms")
+          .then((response) => response.json())
+          .then((data) => {
+            if (!data.ok) throw new Error(data.statusText);
+            setRooms(data);
+            setLoading(false);
+          })
+          .catch((error) => {
+            console.log(error);
+            api.error({
+              message:
+                "Fetching rooms failed. Please ensure you have a stable network connection.",
+            });
+            setLoading(false);
+          });
       })
-      .catch(() => setState("error"));
-  }, []);
+      .catch((error) => {
+        console.log(error);
+        api.error({
+          message:
+            "Fetching rooms failed. Please ensure you don't have a popup blocker enabled.",
+        });
+        setLoading(false);
+      });
+  };
 
+  // Function to call the Auth0 Management API to save changes to the user's name
   const handleSaveName: React.MouseEventHandler<HTMLElement> = () => {
     setNameInputState("loading");
 
@@ -117,10 +155,6 @@ export default function HomePage({
             type="primary"
             size="small"
             icon={<CheckOutlined />}
-            // when the user hits save, send an API call to the auth0 management API to update
-            // the name field on the user object, and either set the global user object to the returned
-            // updated object if that's how the API works, or manually update it depending on whether
-            // this API call is successful
             onClick={handleSaveName}
             style={{ border: "none" }}
           />
@@ -156,14 +190,19 @@ export default function HomePage({
           style={{ maxWidth: 420, width: "100%" }}
         >
           <Text strong>Select a room</Text>
-          <Select
-            placeholder="Choose a room"
-            value={selectedRoom}
-            onChange={setSelectedRoom}
-            options={rooms.map((r) => ({ label: r, value: r }))}
-            size="large"
-            loading={state === "loading"}
-          />
+          <Flex gap="small">
+            <Select
+              placeholder="Choose a room"
+              value={selectedRoom}
+              onChange={setSelectedRoom}
+              options={rooms.map((r) => ({ label: r, value: r }))}
+              size="large"
+              loading={loading}
+            />
+            <Button size="large" onClick={loadRooms}>
+              Load rooms
+            </Button>
+          </Flex>
           <Text strong>Your name</Text>
           <Input
             placeholder="Your name"
@@ -189,6 +228,7 @@ export default function HomePage({
 
   return (
     <Layout style={{ minHeight: "100%" }}>
+      {contextHolder}
       <Header
         style={{
           background: token.token.colorBgContainer,

@@ -76,7 +76,7 @@ getAccessTokenSilently({
       },
 ```
 
-would fail, and you would need to use getAccessTokenWithPopup instead so the user can consent. Thankfully, if your additional APIs do not have any custom scope, for example the Yap Backend, then:
+would fail, and you would need to use getAccessTokenWithPopup instead so the user can consent. This even inclues, your additional APIs that do not have any custom scope, for example with the Yap Backend:
 
 ```typescript
 getAccessTokenSilently({
@@ -86,4 +86,4 @@ getAccessTokenSilently({
       },
 ```
 
-will work, since the user does not need to consent to the default scope. This means that as long as you don't use custom scopes, the user only needs to consent once on login for the frontend to be able to interact with all of your custom APIs as well as the **Auth0 Management API**, as long as you ensure to get consent for the management API audience with the user management scopes in `Auth0Provider`.
+This will fail if the user didn't consent to this exact audience upon logging in. The recommended workaround is to use a single API gateway and have the user consent to it upon logging in (specify that gateway as the audience in `Auth0Provider` with the necessary scope), and then make all requests to your microservices as well as the **Auth0 Management API** using your gateway as a proxy. This is of course annoying as well because you need to create endpoints that are literally just passthroughs to **Auth0 Management API** endpoints. Alternatively you can use `getAccessTokenWithPopup()` to get consent from the user to access other API's from their account, but then for every additional custom API you use beyond the **Auth0 Management API**, the user will need to consent again, which interrupts their user flow. Currently, I am using this latter approach, but later I will swap to the prior approach to improve the user experience.
