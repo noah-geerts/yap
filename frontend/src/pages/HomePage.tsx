@@ -9,13 +9,11 @@ import {
   notification,
 } from "antd";
 import type { Page } from "../App";
-import { useEffect, useState } from "react";
-import type { State } from "../domain/State";
+import { useState } from "react";
 import {
   CheckOutlined,
   EditOutlined,
   LoadingOutlined,
-  SaveOutlined,
 } from "@ant-design/icons";
 import { useAuth0, type User } from "@auth0/auth0-react";
 
