@@ -1,5 +1,7 @@
 import { vi } from "vitest";
 import { Request, Response } from "express";
+import Stream from "stream";
+import { WebSocketServer } from "ws";
 
 // Helper function to get a valid JWT from auth0
 export async function getValidJWT() {
@@ -41,4 +43,20 @@ export function createMockResponse(): Response {
   } as unknown as Response;
 
   return res;
+}
+
+// Helper function to create mock Duplex
+export function createMockDuplex(): Stream.Duplex {
+  return {
+    destroy: vi.fn(),
+    write: vi.fn(),
+  } as unknown as Stream.Duplex;
+}
+
+// Helper function to create mock WebSocketServer
+export function createMockWss(): WebSocketServer {
+  return {
+    handleUpgrade: vi.fn(),
+    emit: vi.fn(),
+  } as unknown as WebSocketServer;
 }

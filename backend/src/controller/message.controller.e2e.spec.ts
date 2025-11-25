@@ -3,10 +3,12 @@ import rooms, { clearDb } from "../persistence/persistence.js";
 import Room from "../domain/Room.js";
 import Message from "../domain/Message.js";
 import server, { bootstrapServer } from "./server.js";
+import { getValidJWT } from "../common/test.helpers.js";
 
 describe("message controller e2e tests", () => {
   let port: number = 9999;
   let baseUrl: string = `http://localhost:${port}/messages`;
+  let validJwt: string;
 
   beforeEach(() => {
     // Seed some messages
@@ -26,7 +28,10 @@ describe("message controller e2e tests", () => {
     clearDb();
   });
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    // Get a valid JWT
+    validJwt = await getValidJWT();
+
     // Seed a room
     const existingRoom: Room = {
       name: "Room1",
@@ -42,7 +47,9 @@ describe("message controller e2e tests", () => {
     it("should return empty array for room with no chats and no query params", async () => {
       // Act
       const url = baseUrl + "/epicroom";
-      const result = await fetch(url);
+      const result = await fetch(url, {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
       const data = await result.json();
 
       // Assert
@@ -59,7 +66,9 @@ describe("message controller e2e tests", () => {
       async (limit: any, offset: any) => {
         // Act
         const url = baseUrl + `/epicroom?limit=${limit}&offset=${offset}`;
-        const result = await fetch(url);
+        const result = await fetch(url, {
+          headers: { authorization: `Bearer ${validJwt}` },
+        });
 
         // Assert
         expect(result.status).toBe(500);
@@ -69,7 +78,9 @@ describe("message controller e2e tests", () => {
     it("should return empty array for room with no chats and valid query params", async () => {
       // Act
       const url = baseUrl + `/epicroom?limit=2&offset=4`;
-      const result = await fetch(url);
+      const result = await fetch(url, {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
       const data = await result.json();
 
       // Assert
@@ -80,7 +91,9 @@ describe("message controller e2e tests", () => {
     it("should return existing chats for room with chats in descending order", async () => {
       // Act
       const url = baseUrl + `/Room1`;
-      const result = await fetch(url);
+      const result = await fetch(url, {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
       const data = await result.json();
 
       // Assert
@@ -100,7 +113,9 @@ describe("message controller e2e tests", () => {
     it("should return correct subarray when using limit and offset", async () => {
       // Act
       const url = baseUrl + `/Room1?offset=1&limit=1`;
-      const result = await fetch(url);
+      const result = await fetch(url, {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
       const data = await result.json();
 
       // Assert

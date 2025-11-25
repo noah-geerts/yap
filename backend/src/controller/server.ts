@@ -5,6 +5,8 @@ import setupMessageController from "./message.controller.js";
 import setupMessageGateway, { setupClientMap } from "./message.gateway.js";
 import setupRoomController from "./room.controller.js";
 import cors from "cors";
+import { authMiddleware } from "./middleware/auth.middleware.js";
+import { createWsAuthMiddleware } from "./middleware/wsAuth.middleware.js";
 
 /**
  * This is a bit confusing since the ws server wraps the httpServer but express doesn't..
@@ -23,7 +25,9 @@ import cors from "cors";
 
 export const restServer: Application = express();
 const server: Server = createServer(restServer);
-export const wsServer: WebSocketServer = new WebSocketServer({ server });
+export const wsServer: WebSocketServer = new WebSocketServer({
+  noServer: true,
+});
 
 // configure cors
 const corsOptions: cors.CorsOptions = {
@@ -33,6 +37,12 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 204, // Status for successful OPTIONS requests
 };
 restServer.use(cors(corsOptions));
+
+// Attach auth middleware to express server
+restServer.use(authMiddleware);
+
+// Attach authentication logic to upgrade event on http server
+server.on("upgrade", createWsAuthMiddleware(wsServer));
 
 // create controllers and gateways on the servers
 setupMessageController(restServer);

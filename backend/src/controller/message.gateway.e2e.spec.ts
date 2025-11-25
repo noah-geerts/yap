@@ -5,6 +5,7 @@ import server, { bootstrapServer, wsServer } from "./server.js";
 import WebSocket, { WebSocketServer } from "ws";
 import { clients } from "./message.gateway.js";
 import Message from "../domain/Message.js";
+import { getValidJWT } from "../common/test.helpers.js";
 
 const TIMEOUT_MS = 200;
 
@@ -54,6 +55,16 @@ async function waitForSocketOpen(ws: WebSocket) {
 describe("message gateway e2e tests", () => {
   let port: number = 9998;
   let baseUrl: string = `ws://localhost:${port}`;
+  let httpUrl: string = `http://localhost:${port}`;
+  let validJwt: string;
+  const invalidJwt =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30";
+  const upgradeHeaders = {
+    Upgrade: "websocket",
+    Connection: "Upgrade",
+    "Sec-WebSocket-Key": Buffer.from("test-key").toString("base64"),
+    "Sec-WebSocket-Version": "13",
+  };
 
   beforeEach(async () => {
     // Clear all connections
@@ -69,7 +80,10 @@ describe("message gateway e2e tests", () => {
     clearDb();
   });
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    // Get a valid jwt
+    validJwt = await getValidJWT();
+
     // Seed 2 rooms
     const existingRoom: Room = {
       name: "Room1",
@@ -88,9 +102,28 @@ describe("message gateway e2e tests", () => {
   });
 
   describe("Connection", () => {
+    it("Should deny connection without auth header", async () => {
+      await new Promise<void>((resolve, reject) => {
+        const ws = new WebSocket(baseUrl + "?room=Room1");
+        // No authorization header in WebSocket options
+
+        ws.on("error", () => resolve()); // Expected
+        ws.on("close", (code) => {
+          if (code === 1006)
+            resolve(); // Connection closed abnormally (auth rejection)
+          else reject(new Error("Unexpected close code: " + code));
+        });
+        ws.on("open", () => reject(new Error("Should have been denied")));
+
+        setTimeout(() => reject(new Error("Timeout")), 1000);
+      });
+    });
+
     it("Should get closed by server if no room provided", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl);
+      const ws = new WebSocket(baseUrl, [], {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -124,7 +157,7 @@ describe("message gateway e2e tests", () => {
     it("Should get closed by server if invalid room provided", async () => {
       // Connect to the server
       const ws = new WebSocket(baseUrl, [], {
-        headers: { location: "Room3" },
+        headers: { authorization: `Bearer ${validJwt}`, location: "Room3" },
       });
 
       // Wait for the connection to open
@@ -158,7 +191,9 @@ describe("message gateway e2e tests", () => {
 
     it("Should register client, keep connection open, then unregister client on close", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2");
+      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -193,7 +228,9 @@ describe("message gateway e2e tests", () => {
   describe("Send Message", () => {
     it("Message in valid room should persist and be sent to sender", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2");
+      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -228,9 +265,15 @@ describe("message gateway e2e tests", () => {
 
     it("Message in valid room should persist and be sent to all clients in that room", async () => {
       // Connect to the server
-      const ws1 = new WebSocket(baseUrl + "?room=Room2");
-      const ws2 = new WebSocket(baseUrl + "?room=Room2");
-      const ws3 = new WebSocket(baseUrl + "?room=Room1");
+      const ws1 = new WebSocket(baseUrl + "?room=Room2", [], {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
+      const ws2 = new WebSocket(baseUrl + "?room=Room2", [], {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
+      const ws3 = new WebSocket(baseUrl + "?room=Room1", [], {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
 
       // Wait for the connections to open
       await waitForSocketOpen(ws1);
@@ -283,7 +326,9 @@ describe("message gateway e2e tests", () => {
 
     it("Non-JSON Message should not be sent or persisted", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2");
+      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -326,7 +371,7 @@ describe("message gateway e2e tests", () => {
       async (newMessage: any) => {
         // Connect to the server
         const ws = new WebSocket(baseUrl, [], {
-          headers: { location: "Room2" },
+          headers: { authorization: `Bearer ${validJwt}`, location: "Room2" },
         });
 
         // Wait for the connection to open
@@ -358,7 +403,9 @@ describe("message gateway e2e tests", () => {
 
     it("Message in invalid room should not be sent or persisted", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2");
+      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -394,7 +441,9 @@ describe("message gateway e2e tests", () => {
 
     it("Duplicate message should not be persisted", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2");
+      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
+        headers: { authorization: `Bearer ${validJwt}` },
+      });
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
