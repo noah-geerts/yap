@@ -34,6 +34,7 @@ export default function setupMessageGateway(wsServer: WebSocketServer) {
     }
 
     // Otherwise register the connection and create event handlers
+    console.log("New connection");
     room.add(client);
 
     // Receive message handler
@@ -53,6 +54,7 @@ export default function setupMessageGateway(wsServer: WebSocketServer) {
 
     // When the client disconnects, remove them from the room
     client.on("close", () => {
+      console.log("Closing a connection");
       room.delete(client);
     });
   });

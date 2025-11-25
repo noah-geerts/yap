@@ -12,11 +12,11 @@ import {
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 import { ArrowLeftOutlined, SendOutlined } from "@ant-design/icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import type { Page } from "../App";
 import type { State } from "../domain/State";
 import type { Message } from "../domain/Message";
-import type { User } from "@auth0/auth0-react";
+import { useAuth0, type User } from "@auth0/auth0-react";
 
 type ChatPageProps = {
   room: string;
@@ -35,49 +35,81 @@ export default function ChatPage({
   const [state, setState] = useState<State>("loading");
   const [messages, setMessages] = useState<Message[]>([]);
   const [composeText, setComposeText] = useState("");
+  const { getAccessTokenSilently } = useAuth0();
 
   // Scroll to bottom upon receiving new message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const fetchMessagesAndConnect = useCallback(
+    (jwt: string) => {
+      // Close any existing connection first
+      if (ws.current) {
+        ws.current.close();
+        ws.current = undefined;
+      }
+
+      // Fetch old messages
+      fetch(import.meta.env.VITE_API_URL + `/messages/${room}`, {
+        headers: { authorization: `Bearer ${jwt}` },
+      })
+        .then((response) => {
+          if (!response.ok)
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          return response.json();
+        })
+        .then((data) => {
+          setMessages(data);
+          setState("ok");
+        })
+        .catch((error) => {
+          console.log(error);
+          setState("error");
+        });
+
+      // Websocket connection
+      ws.current = new WebSocket(
+        import.meta.env.VITE_WS_URL + `/messages?room=${room}&auth=${jwt}`
+      );
+      ws.current.onmessage = (event) => {
+        const data: string = event.data;
+        try {
+          const message: Message = JSON.parse(data);
+          setMessages((prev) => [message, ...prev]);
+        } catch (e) {
+          console.log("Invalid JSON received in websocket event");
+        }
+      };
+    },
+    [room]
+  );
+
   // Fetch messages for the room when initially loading the view (on mount)
   // and establish a WebSocket connection to the backend for live messages
   useEffect(() => {
-    // Fetch old messages
-    fetch(import.meta.env.VITE_API_URL + `/messages/${room}`)
-      .then((response) => response.json())
-      .then((data) => {
-        setMessages(data);
-        setState("ok");
+    // Fetch old messages and connect to the WebSocket
+    getAccessTokenSilently({
+      authorizationParams: {
+        audience: "http://localhost:3000",
+      },
+    })
+      .then((jwt) => {
+        fetchMessagesAndConnect(jwt);
       })
-      .catch(() => setState("error"));
+      .catch((error) => {
+        console.log(error);
+        setState("error");
+      });
 
-    // Websocket connection
-    ws.current = new WebSocket(
-      import.meta.env.VITE_WS_URL + `/messages?room=${room}`
-    );
-    ws.current.onopen = () => {
-      console.log("OPEN");
-    };
-    ws.current.onclose = () => {
-      console.log("CLOSE");
-    };
-    ws.current.onmessage = (event) => {
-      const data: string = event.data;
-      try {
-        const message: Message = JSON.parse(data);
-        setMessages((prev) => [message, ...prev]);
-      } catch (e) {
-        console.log("Invalid JSON received in websocket event");
+    // Close connection on dismount or room change
+    return () => {
+      if (ws.current) {
+        ws.current.close();
+        ws.current = undefined;
       }
     };
-
-    // Close connection on dismount
-    return () => {
-      ws.current?.close();
-    };
-  }, [room]);
+  }, [room, fetchMessagesAndConnect]);
 
   const handleSend = () => {
     if (!composeText.trim() || !userInfo.user_metadata.name) return; // TODO handle the user's name not being loaded more elegantly
@@ -111,11 +143,16 @@ export default function ChatPage({
           <div ref={bottomRef}></div>
           {messages.map((item) => {
             const date = new Date(item.timestamp_utc);
+            console.log(item.from);
+            console.log(userInfo?.user_metadata.name);
             return (
               <div
                 key={`${item.timestamp_utc}-${item.from}-${item.text}`}
                 style={{
-                  background: token.token.colorBgContainer,
+                  backgroundColor:
+                    item.from === userInfo?.user_metadata.name
+                      ? "#F6FFFF"
+                      : token.token.colorBgContainer,
                   border: `1px solid ${token.token.colorBorderSecondary}`,
                   borderRadius: 8,
                   padding: 16,
@@ -133,12 +170,19 @@ export default function ChatPage({
                       </Avatar>
                       <Text strong>{item.from}</Text>
                     </Flex>
-                    <Tag color="blue" style={{ margin: 0 }}>
-                      {date.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Tag>
+                    <Flex gap={8} justify="space-between">
+                      {item.from === userInfo?.user_metadata.name && (
+                        <Tag color="purple" style={{ margin: 0 }}>
+                          You
+                        </Tag>
+                      )}
+                      <Tag color="blue" style={{ margin: 0 }}>
+                        {date.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Tag>
+                    </Flex>
                   </Flex>
                   <Text>{item.text}</Text>
                 </Flex>

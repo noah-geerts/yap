@@ -78,6 +78,8 @@ type Room = {
 
 ## REST API
 
+All requests are expected to include an authorization header containing a JWT signed by Auth0 for this backend service.
+
 ### `GET /messages/:room`
 
 **Description:**  
@@ -121,7 +123,7 @@ Retrieves an array containing the names of all valid rooms.
 
 ## WebSocket
 
-**All client connections are expected to include the room query param to specify which room the client wants to connect to. Only connections with valid rooms will be accepted (see the e2e tests).** All WebSocket messages use the **text opcode (`0x2`)** and contain **stringified JSON data**, which should be parsed on the receiving end.
+**All client connections are expected to include the room query param to specify which room the client wants to connect to. Only connections with valid rooms will be accepted (see the e2e tests).** All WebSocket messages use the **text opcode (`0x2`)** and contain **stringified JSON data**, which should be parsed on the receiving end. All client connections are also expected to include an Authorization header in the Upgrade request. Otherwise, the client will receive `401 Unauthorized` instead of `101 Switching` Protocols.
 
 ### Server → Client Messages
 

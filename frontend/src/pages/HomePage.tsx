@@ -53,18 +53,23 @@ export default function HomePage({
   const loadRooms = () => {
     getAccessTokenWithPopup({
       authorizationParams: {
-        scope:
-          "read:current_user update:current_user_identities update:current_user_metadata",
-        audience: "https://dev-h60bzgedqbu866oj.us.auth0.com/api/v2/",
+        audience: "http://localhost:3000",
       },
     })
       .then((jwt) => {
         console.log(jwt);
         console.log("HI");
-        fetch(import.meta.env.VITE_API_URL + "/rooms")
-          .then((response) => response.json())
+        fetch(import.meta.env.VITE_API_URL + "/rooms", {
+          headers: { authorization: `Bearer ${jwt}` },
+        })
+          .then((response) => {
+            if (!response.ok)
+              throw new Error(
+                `HTTP ${response.status}: ${response.statusText}`
+              );
+            return response.json();
+          })
           .then((data) => {
-            if (!data.ok) throw new Error(data.statusText);
             setRooms(data);
             setLoading(false);
           })

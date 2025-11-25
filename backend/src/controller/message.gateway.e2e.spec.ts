@@ -102,7 +102,7 @@ describe("message gateway e2e tests", () => {
   });
 
   describe("Connection", () => {
-    it("Should deny connection without auth header", async () => {
+    it("Should deny connection without auth query param", async () => {
       await new Promise<void>((resolve, reject) => {
         const ws = new WebSocket(baseUrl + "?room=Room1");
         // No authorization header in WebSocket options
@@ -121,7 +121,7 @@ describe("message gateway e2e tests", () => {
 
     it("Should get closed by server if no room provided", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl, [], {
+      const ws = new WebSocket(baseUrl + `?auth=${validJwt}`, [], {
         headers: { authorization: `Bearer ${validJwt}` },
       });
 
@@ -156,9 +156,7 @@ describe("message gateway e2e tests", () => {
 
     it("Should get closed by server if invalid room provided", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl, [], {
-        headers: { authorization: `Bearer ${validJwt}`, location: "Room3" },
-      });
+      const ws = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room3`);
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -191,9 +189,7 @@ describe("message gateway e2e tests", () => {
 
     it("Should register client, keep connection open, then unregister client on close", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
-        headers: { authorization: `Bearer ${validJwt}` },
-      });
+      const ws = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room2`);
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -228,9 +224,7 @@ describe("message gateway e2e tests", () => {
   describe("Send Message", () => {
     it("Message in valid room should persist and be sent to sender", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
-        headers: { authorization: `Bearer ${validJwt}` },
-      });
+      const ws = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room2`);
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -265,15 +259,9 @@ describe("message gateway e2e tests", () => {
 
     it("Message in valid room should persist and be sent to all clients in that room", async () => {
       // Connect to the server
-      const ws1 = new WebSocket(baseUrl + "?room=Room2", [], {
-        headers: { authorization: `Bearer ${validJwt}` },
-      });
-      const ws2 = new WebSocket(baseUrl + "?room=Room2", [], {
-        headers: { authorization: `Bearer ${validJwt}` },
-      });
-      const ws3 = new WebSocket(baseUrl + "?room=Room1", [], {
-        headers: { authorization: `Bearer ${validJwt}` },
-      });
+      const ws1 = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room2`);
+      const ws2 = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room2`);
+      const ws3 = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room1`);
 
       // Wait for the connections to open
       await waitForSocketOpen(ws1);
@@ -326,9 +314,7 @@ describe("message gateway e2e tests", () => {
 
     it("Non-JSON Message should not be sent or persisted", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
-        headers: { authorization: `Bearer ${validJwt}` },
-      });
+      const ws = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room2`);
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -370,9 +356,7 @@ describe("message gateway e2e tests", () => {
       "Incorrect Message objects should not be sent or persisted",
       async (newMessage: any) => {
         // Connect to the server
-        const ws = new WebSocket(baseUrl, [], {
-          headers: { authorization: `Bearer ${validJwt}`, location: "Room2" },
-        });
+        const ws = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room2`);
 
         // Wait for the connection to open
         await waitForSocketOpen(ws);
@@ -403,9 +387,7 @@ describe("message gateway e2e tests", () => {
 
     it("Message in invalid room should not be sent or persisted", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
-        headers: { authorization: `Bearer ${validJwt}` },
-      });
+      const ws = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room2`);
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
@@ -441,9 +423,7 @@ describe("message gateway e2e tests", () => {
 
     it("Duplicate message should not be persisted", async () => {
       // Connect to the server
-      const ws = new WebSocket(baseUrl + "?room=Room2", [], {
-        headers: { authorization: `Bearer ${validJwt}` },
-      });
+      const ws = new WebSocket(baseUrl + `?auth=${validJwt}&room=Room2`);
 
       // Wait for the connection to open
       await waitForSocketOpen(ws);
