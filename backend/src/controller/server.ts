@@ -31,7 +31,7 @@ export const wsServer: WebSocketServer = new WebSocketServer({
 
 // configure cors
 const corsOptions: cors.CorsOptions = {
-  origin: ["http://localhost:5173"],
+  origin: process.env.FRONTEND_DOMAIN ? ["http://localhost:5173"] : [],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Allowed HTTP methods
   credentials: true, // Allow cookies and authentication headers
   optionsSuccessStatus: 204, // Status for successful OPTIONS requests

@@ -12,6 +12,17 @@ For testing I used vitest, because setting up jest to run with typescript and ES
 4. Run `node dist/index.js` to start the project
 5. Run `npx vitest` to test the project
 
+## Environment variables
+
+Environment variables. Dotenv is configured in the entrypoint `index.ts` to load environment variables from the cwd, so you must run `node dist/index.js` from the backend root (`backend/` in the repo). It will load from `.env.production` if NODE_ENV is production, and from `.env.development` otherwise.
+
+- AUTH0_DOMAIN: provided by auth0 and used to connect to their services via the SDK
+- AUTH0_AUDIENCE: the unique identifier for our backend, configured in the auth0 dashboard
+- AUTH0_CLIENT_ID: provided by auth0 and used to connect to their services via the SDK
+- AUTH0_CLIENT_SECRET: **warning** a private secret used to access the Auth0 Management API with admin privileges
+- FRONTEND_DOMAIN: the domain of the frontend, used to configure CORS
+- PORT: the port to expose the API on
+
 ## Layered (clean-esque) Architecture
 
 ### Controller Layer

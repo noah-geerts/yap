@@ -143,17 +143,16 @@ export default function ChatPage({
           <div ref={bottomRef}></div>
           {messages.map((item) => {
             const date = new Date(item.timestamp_utc);
-            console.log(item.from);
-            console.log(userInfo?.user_metadata.name);
             return (
               <div
                 key={`${item.timestamp_utc}-${item.from}-${item.text}`}
                 style={{
-                  backgroundColor:
+                  background: token.token.colorBgContainer,
+                  border: `1px solid ${
                     item.from === userInfo?.user_metadata.name
-                      ? "#F6FFFF"
-                      : token.token.colorBgContainer,
-                  border: `1px solid ${token.token.colorBorderSecondary}`,
+                      ? token.token.colorPrimaryBorderHover
+                      : token.token.colorBorderSecondary
+                  }`,
                   borderRadius: 8,
                   padding: 16,
                 }}
@@ -172,11 +171,11 @@ export default function ChatPage({
                     </Flex>
                     <Flex gap={8} justify="space-between">
                       {item.from === userInfo?.user_metadata.name && (
-                        <Tag color="purple" style={{ margin: 0 }}>
+                        <Tag color="blue" style={{ margin: 0 }}>
                           You
                         </Tag>
                       )}
-                      <Tag color="blue" style={{ margin: 0 }}>
+                      <Tag color="purple" style={{ margin: 0 }}>
                         {date.toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",

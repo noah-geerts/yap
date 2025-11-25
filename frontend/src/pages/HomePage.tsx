@@ -45,9 +45,10 @@ export default function HomePage({
   const [rooms, setRooms] = useState([]);
   const [nameInputState, setNameInputState] = useState<InputState>("ok");
   const [nameInput, setNameInput] = useState<string>(
-    userInfo.user_metadata.name || ""
+    userInfo.user_metadata?.name || ""
   );
-  const { user, getAccessTokenSilently, getAccessTokenWithPopup } = useAuth0();
+  const { user, getAccessTokenSilently, getAccessTokenWithPopup, logout } =
+    useAuth0();
 
   // Function to load rooms list. Can't be triggered in a useEffect because it opens a popup and browsers will block it.
   const loadRooms = () => {
@@ -98,7 +99,7 @@ export default function HomePage({
 
     // If the user sub isn't available we have an authentication issue. Reset the name input and go back to ok state
     if (user?.sub === undefined || nameInput === "") {
-      setNameInput(userInfo.user_metadata.name || "");
+      setNameInput(userInfo.user_metadata?.name || "");
       setNameInputState("ok");
       return;
     }
@@ -135,14 +136,14 @@ export default function HomePage({
           })
           .catch((error) => {
             console.log(error);
-            setNameInput(userInfo.user_metadata.name || "");
+            setNameInput(userInfo.user_metadata?.name || "");
             setNameInputState("ok");
           });
       })
       // If we can't get an access token we can't update the user info, so fall back
       .catch((error) => {
         console.log(error);
-        setNameInput(userInfo.user_metadata.name || "");
+        setNameInput(userInfo.user_metadata?.name || "");
         setNameInputState("ok");
       });
   };
@@ -220,7 +221,7 @@ export default function HomePage({
           <Button
             type="primary"
             size="large"
-            disabled={!selectedRoom || nameInputState !== "ok"}
+            disabled={!selectedRoom || !userInfo.user_metadata?.name}
             onClick={handleJoin}
             block
           >
@@ -240,12 +241,12 @@ export default function HomePage({
           borderBottom: `1px solid ${token.token.colorBorderSecondary}`,
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "flex-start",
         }}
       >
-        <Title level={3} style={{ margin: 0 }}>
-          Welcome
-        </Title>
+        <Button color="danger" variant="outlined" onClick={() => logout()}>
+          Log out
+        </Button>
       </Header>
       {content}
       <Footer style={{ textAlign: "center" }}>

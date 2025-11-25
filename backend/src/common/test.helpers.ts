@@ -5,20 +5,16 @@ import { WebSocketServer } from "ws";
 
 // Helper function to get a valid JWT from auth0
 export async function getValidJWT() {
-  const response = await fetch(
-    "https://dev-h60bzgedqbu866oj.us.auth0.com/oauth/token",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: "msaJIGv2TarVXWQ6XaxSTbqiyEzScJM0",
-        client_secret:
-          "Iy_nHDdoIYg0CcQndaDI_TRMP7YKoy14Bpy7g1LTqjcu-22EHhXBf00blYrdosQJ",
-        audience: "http://localhost:3000",
-        grant_type: "client_credentials",
-      }),
-    }
-  );
+  const response = await fetch(`${process.env.AUTH0_DOMAIN}/oauth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: process.env.AUTH0_CLIENT_SECRET,
+      audience: process.env.AUTH0_AUDIENCE,
+      grant_type: "client_credentials",
+    }),
+  });
   const data = await response.json();
   return data.access_token;
 }
