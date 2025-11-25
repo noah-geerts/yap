@@ -16,8 +16,14 @@ async function startServer() {
   const rooms = (await import("./persistence/persistence.js")).default;
 
   // Seed some rooms in persistence
-  for (let i = 1; i <= 5; i++) {
-    rooms.set("Room " + i, { name: "Room " + i, messages: [] });
+  for (let room of [
+    "General",
+    "University",
+    "Over 30",
+    "Politics",
+    "Looking for Friends",
+  ]) {
+    rooms.set(room, { name: room, messages: [] });
   }
 
   // Bootstrap server
