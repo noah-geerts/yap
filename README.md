@@ -6,12 +6,11 @@ Yap is a room-based chatting app
 
 The main objective of this project is to test my understanding of WebSockets, Engine.IO, and Socket.IO. As a result, my plan is to rewrite the backend multiple times:
 
-1. Raw WebSockets + simple React frontend
+1. Raw WebSockets + simple React frontend + auth
 2. Swap WebSockets to Engine.IO
 3. Swap Engine.IO to Socket.IO
 4. Add persistence to backend
-5. Add authentication to frontend and backend
-6. Add DM'ing to frontend and backend, overhaul UI
+5. Add DM'ing to frontend and backend, overhaul UI
 
 ## Version History
 
